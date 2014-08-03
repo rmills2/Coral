@@ -3,6 +3,7 @@ from pygame.locals import *
 
 WHITE = (255, 255, 255)
 BLACK= (0, 0, 0)
+TAN= (247, 231, 160)
 
 class ScratchPad:
     def __init__(self, display, scratchColorsArray, allArray):
@@ -15,16 +16,18 @@ class ScratchPad:
         self.allArray = allArray
     def runScratchPad(self):
         myfont = pygame.font.SysFont("Times New Roman", 15)
+        myfont.set_bold(True)
         text = myfont.render('Hello world!', True, WHITE, BLACK)
         textRect = text.get_rect()
         textRect.centerx = 700
         textRect.centery = 100
-        self.display.fill(WHITE)
+        self.display.fill(TAN)
         self.createAll()
         return self.allArray
     @staticmethod
     def blitText(textName, rect, display):
         myfont = pygame.font.SysFont("Times New Roman", 15)
+        myfont.set_bold(True)
         display.blit(myfont.render(textName, True, (0,0,0)), (rect.x + 150, rect.y))
     def createAll(self):
         yVal = 0
@@ -36,3 +39,6 @@ class ScratchPad:
             ScratchPad.blitText(objectFromArray, r, self.display)
             yVal += 20
         pygame.display.update()
+    def redrawEntryArea(self, display, rect):
+        pygame.draw.rect(display, TAN, rect)
+        pygame.draw.rect(display, BLACK, rect, 2)
