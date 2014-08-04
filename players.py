@@ -29,9 +29,17 @@ class Player:
         pygame.draw.rect(display, self.getColor(), (self.getX() - 25, self.getY() - 25, 50, 50), 4)        
     def drawPlayerArrow(self, display, color, upArrow):
         if upArrow == False:
-            pygame.draw.polygon(display, color, ((self.getX() - 2.5, 430), (self.getX() + 2.5, 430), (self.getX() + 2.5, 450), (7.5 + self.getX(), 450), (self.getX(), 460), (self.getX() - 7.5, 450), (self.getX() - 2.5, 450)))
+            pygame.draw.polygon(display, color, ((self.getX() - 2.5, 330), (self.getX() + 2.5, 330), (self.getX() + 2.5, 350), (7.5 + self.getX(), 350), (self.getX(), 360), (self.getX() - 7.5, 350), (self.getX() - 2.5, 350)))
+            if color != TAN:
+                pygame.draw.polygon(display, BLACK, ((self.getX() - 2.5, 330), (self.getX() + 2.5, 330), (self.getX() + 2.5, 350), (7.5 + self.getX(), 350), (self.getX(), 360), (self.getX() - 7.5, 350), (self.getX() - 2.5, 350)), 2)
+            else:
+                pygame.draw.polygon(display, color, ((self.getX() - 2.5, 330), (self.getX() + 2.5, 330), (self.getX() + 2.5, 350), (7.5 + self.getX(), 350), (self.getX(), 360), (self.getX() - 7.5, 350), (self.getX() - 2.5, 350)), 2)
         else:
-            pygame.draw.polygon(display, color, ((self.getX() - 2.5, 590), (self.getX() + 2.5, 590), (self.getX() + 2.5, 570), (7.5 + self.getX(), 570), (self.getX(), 560), (self.getX() - 7.5, 570), (self.getX() - 2.5, 570)))
+            pygame.draw.polygon(display, color, ((self.getX() - 2.5, 490), (self.getX() + 2.5, 490), (self.getX() + 2.5, 470), (7.5 + self.getX(), 470), (self.getX(), 460), (self.getX() - 7.5, 470), (self.getX() - 2.5, 470)))
+            if color != TAN:
+                pygame.draw.polygon(display, BLACK, ((self.getX() - 2.5, 490), (self.getX() + 2.5, 490), (self.getX() + 2.5, 470), (7.5 + self.getX(), 470), (self.getX(), 460), (self.getX() - 7.5, 470), (self.getX() - 2.5, 470)), 2)
+            else:
+                pygame.draw.polygon(display, color, ((self.getX() - 2.5, 490), (self.getX() + 2.5, 490), (self.getX() + 2.5, 470), (7.5 + self.getX(), 470), (self.getX(), 460), (self.getX() - 7.5, 470), (self.getX() - 2.5, 470)), 2)
 
     
 

@@ -16,24 +16,23 @@ TAN= (247, 231, 160)
 
 ############## Game and Font Initialization ###############
 pygame.init()
-display = pygame.display.set_mode((900, 600), 0, 32)
+display = pygame.display.set_mode((900, 800), HWSURFACE|DOUBLEBUF)
 pygame.display.set_caption('Board')
 myfont = pygame.font.SysFont("Times New Roman", 50)
 roomFont = pygame.font.SysFont("Times New Roman", 15)
 roomFont.set_bold(True)
 display.fill(TAN)
 
-
 ############## Scratch Pad Integration ################
 
 scratchColorsArray = []
 allArray = []
 scratchPad = ScratchPad(display, scratchColorsArray, allArray)
-allArray = scratchPad.runScratchPad()
+entries = scratchPad.runScratchPad()
 
 
 ############## Player Area Integration ################
-playerArea = PlayerArea([], display, 600, 420)
+playerArea = PlayerArea([], display, 600, 320)
 
 ############## Internal Class Declarations ##############
 class Character:
@@ -53,7 +52,7 @@ class Character:
         areaColor = YELLOW
         if isinstance(area, Room):
             areaColor = TAN
-            rect = pygame.Rect(area.x, area.y, 120, 120)
+            rect = pygame.Rect(area.x, area.y, 120, 100)
             Area.draw(rect, areaColor)
             if isinstance (area, Room):    
                 display.blit(area.image, (rect.x, rect.y))               
@@ -116,7 +115,7 @@ class Area:
     def getValidAreas(self, spot, spotArray):
         validAreas = []
         for i in range(len(spotArray)):
-            if (((spot.x + 120 == spotArray[i].x or spot.x - 120 == spotArray[i].x) and (spot.y == spotArray[i].y)) or ((spot.y + 120 == spotArray[i].y or spot.y - 120 == spotArray[i].y) and (spot.x == spotArray[i].x))):
+            if (((spot.x + 120 == spotArray[i].x or spot.x - 120 == spotArray[i].x) and (spot.y == spotArray[i].y)) or ((spot.y + 100 == spotArray[i].y or spot.y - 100 == spotArray[i].y) and (spot.x == spotArray[i].x))):
                 validAreas.append(spotArray[i])
         return validAreas
 
@@ -128,10 +127,10 @@ class Hallway(Area):
         return self.vertical
     def draw(self):
         if self.vertical == True:              
-            rect = pygame.Rect(self.x + 30, self.y, 60, 120)
+            rect = pygame.Rect(self.x + 30, self.y, 60, 100)
             Area.draw(rect, BLACK)
         else:
-            rect = pygame.Rect(self.x, self.y + 30, 120, 60)
+            rect = pygame.Rect(self.x, self.y + 30, 120, 50)
             Area.draw(rect, BLACK)
 
 class Room(Area):
@@ -188,11 +187,10 @@ def isValidSecretPassage(areaToGo, characterArea):
 for i in range(5):
     x = 0
     for j in range(5):
-        rect = pygame.Rect(x * 10, y * 10, 120, 120)
+        rect = pygame.Rect(x * 10, y * 10, 120, 100)
         if (i ==0 or i == 2 or i == 4) and (j == 0 or j == 2 or j == 4):
             Area.draw(rect, TAN)
- #           drawRect(rect, TAN, roomArray[arrayCount])
-            currentImage = pygame.transform.scale(pygame.image.load('resources/images/' + images[arrayCount]), (120, 120)).convert_alpha()
+            currentImage = pygame.transform.scale(pygame.image.load('resources/images/' + images[arrayCount]), (120, 100)).convert_alpha()
             display.blit(currentImage, (rect.x, rect.y))
             display.blit(roomFont.render(roomArray[arrayCount], True, (255,255,255)), (rect.x + 10, rect.y + 75))
             
@@ -223,7 +221,7 @@ for i in range(5):
             characterArray.append(character)
             character.draw()
         x += 12
-    y += 12
+    y += 10
 
 ############## Associate Special Rooms ##################
 for i in range(len(specialRooms)):
@@ -235,19 +233,24 @@ for i in range(len(specialRooms)):
             spB.secretPassageSpot = spA
     
 
+############### Draw Border ###################
+pygame.draw.rect(display, BLACK, (0, 0, 600, 500), 4)
+
+
 ############### Main Game Loop for Game-Play Interaction #################
 turn = 0
 youAre = 2
 playerArea.players[turn].drawPlayerArrow(display, playerArea.players[turn].getColor(), False)
 playerArea.players[youAre].drawBox(display)
+
 while True:
     for event in pygame.event.get():
         if event.type == pygame.MOUSEBUTTONUP:
             for i in range(len(spotArray)):
-                rect = pygame.Rect(spotArray[i].x, spotArray[i].y, 120, 120)
+                rect = pygame.Rect(spotArray[i].x, spotArray[i].y, 120, 100)
                 if rect.collidepoint(event.pos):
                    currentCharacter = characterArray[turn % len(characterArray)]
-                   characterRect = pygame.Rect(currentCharacter.currentArea.x, currentCharacter.currentArea.y, 120, 120)
+                   characterRect = pygame.Rect(currentCharacter.currentArea.x, currentCharacter.currentArea.y, 120, 100)
                    if isValidSecretPassage(spotArray[i], currentCharacter.currentArea) == False and spotArray[i].isAdjacent(spotArray, currentCharacter.currentArea) == False or spotArray[i].maxOccupancy - len(spotArray[i].currentOccupants) <= 0:
                        #### Insert popup message with incorrect spot #####
                        break
@@ -277,18 +280,19 @@ while True:
             yVal = 0
 
             ##### Checks for scratch pad #####
-            for i in range(len(allArray)):
-                r = pygame.Rect(600, yVal, 300, 20)
+            for i in range(len(entries)):
+                r = entries[i].getRect()
                 if r.collidepoint(event.pos):
                     if scratchPad.scratchColorsArray[i] == True:
-                        pygame.draw.line(display, RED, (600, yVal + 10), (900, yVal + 10), 3)
-                        scratchPad.scratchColorsArray[i] = False;
+                        pygame.draw.line(display, RED, (r.x, r.y + 10), (r.x + 120, r.y + 10), 3)
+                        scratchPad.scratchColorsArray[i] = False
                     else:
                         scratchPad.redrawEntryArea(display, r)
-                        ScratchPad.blitText(allArray[i], r, display)
+                        scratchPad.blitText(entries[i].getName(), r, display)
                         scratchPad.scratchColorsArray[i] = True
                 yVal += 20
         if event.type == QUIT:
             pygame.quit()
             sys.exit()
+            
     pygame.display.update()
