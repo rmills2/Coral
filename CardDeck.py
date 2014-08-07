@@ -37,10 +37,10 @@ class CardDeck:
             card_list = [x[0] for x in self.all_card_info]
         return card_list
     
-    def get_card(self,name,cardtype):
+    def get_card(self,name,cardtype=None):
         requested_card = None
         for card in self.cards:
-            if card.get_name() == name and card.get_cardtype() == cardtype:
+            if card.get_name().strip().lower() == name.strip().lower():
                 requested_card = card
                 break
         return requested_card

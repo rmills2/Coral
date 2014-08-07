@@ -1,7 +1,8 @@
-import pygame, sys
+import pygame, sys, time, multiprocessing
 from pygame.locals import *
 from CardDeck import CardDeck, Card
 from forms import Form, Select, Button,Text
+import subprocess, os
 
 pygame.font.init()
 PYGBUTTON_FONT = pygame.font.Font('freesansbold.ttf', 14)
@@ -321,6 +322,8 @@ class Message:
     SUGGESTION = "A suggestion was made:"
     DISPROVE = "Your suggestion was disproved:"
     INCOMPLETE = "Please select a card to disprove the suggestion."
+    MUSTDISPROVE = "It is your turn to disprove the suggestion."
+    
     MESSAGE_STRINGS = {
                       "Invalid Move":INVALID_MOVE,
                       "End Game":END_GAME,
@@ -330,6 +333,7 @@ class Message:
                       "Player Move":MOVE_MESSAGE,
                       "Suggestion":SUGGESTION,
                       "Disprove": DISPROVE,
+                      "Must Disprove": MUSTDISPROVE,
                       "Incomplete":INCOMPLETE
                       }
     MESSAGE_LOCATION = {
@@ -341,6 +345,7 @@ class Message:
                       "Player Move":(100,50),
                       "Suggestion":(160,20),
                       "Disprove":(130,20),
+                      "Must Disprove": (80,60),
                       "Incomplete":(30,50)
                         }
     
@@ -352,6 +357,9 @@ class Message:
     accusation_font = pygame.font.SysFont('Arial', 20)
     
     def __init__(self):
+        self.initialize()
+    
+    def initialize(self):
         pygame.init()
     
     def get_accusation(self,card,cardtype):
@@ -404,7 +412,7 @@ class Message:
                     if 'click' in eventhandler and button.get_caption_name().lower() == "disprove":
                         form_input = self.disproveAccusation(message_type,messages)
                         if form_input == None:
-                            self.showOkayOnlyScreen("Incomplete")
+                            self.showNonAccusationScreen("Incomplete")
                         else:
                             running = False
                     elif 'click' in eventhandler and button.get_caption_name().lower() == "skip":
@@ -431,6 +439,7 @@ class Message:
         accusation_form = Form(False)
         accusation_form.add_object('title', Text('Accusation:', label_style=['bold']))
         for k in xrange(len(accusation_lines)):
+            print "accusation_lines: ", accusation_lines[k]
             accusation_message, accusation_pos,accusation_message_str = accusation_lines[k]
             accusation_form.add_object('accusation_{0}'.format(k), Text('{0}'.format(accusation_message_str), label_style=['bold']))
         
@@ -469,13 +478,8 @@ class Message:
         
         return form_input
     
-    def showAccusation(self,message_type,character_card=None,weapon_card=None,room_card=None,mustDisprove=False):
-        """ This function notifies all players of the accusation"""
+    def get_accusationText(self,message_type="Suggestion",character_card=None,weapon_card=None,room_card=None):
         
-        if not mustDisprove:
-            buttons = [MessageButton((270,150, 60, 30), "OK")]
-        else:
-            buttons = [MessageButton((200,150, 80, 30), "Disprove"),MessageButton((300,150, 80, 30), "Skip")]
         message_position = self.get_message_position(message_type)
         message_string = self.message_font.render(self.MESSAGE_STRINGS[message_type],True,BLACK)
         messages = [(message_string,message_position,"")]
@@ -490,6 +494,19 @@ class Message:
             message_pos = self.get_accusation_position(card,cardtype)
             messages.append((message_str,message_pos,accusation_str))
         
+        print "FINAL MESSAGES: ", messages
+        return messages
+    
+    def showAccusation(self,message_type,character_card=None,weapon_card=None,room_card=None,mustDisprove=False):
+        """ This function notifies all players of the accusation"""
+        
+        if not mustDisprove:
+            buttons = [MessageButton((270,150, 60, 30), "OK")]
+        else:
+            buttons = [MessageButton((200,150, 80, 30), "Disprove"),MessageButton((300,150, 80, 30), "Skip")]
+        
+        messages = self.get_accusationText(message_type,character_card,weapon_card,room_card)
+        
         return self.showAccusationScreen(message_type,buttons,messages)
     
     def showError(self,errortype):
@@ -499,21 +516,24 @@ class Message:
     def startGame(self):
         """ This function tells the user that the game has begun"""
         message_type = "Start Game"
-        self.showOkayOnlyScreen(message_type)
+        self.showNonAccusationScreen(message_type)
         
     
     def get_message_position(self,message_type):
         return self.MESSAGE_LOCATION[message_type]
     
-    def showOkayOnlyScreen(self,message_type):
-        button = MessageButton((270,120, 60, 30), "OK")
+    def showNonAccusationScreen(self,message_type,character_card=None,weapon_card=None,room_card=None):
+        if all([character_card,weapon_card,room_card]):
+            buttons = [MessageButton((200,150, 80, 30), "Disprove"),MessageButton((300,150, 80, 30), "Skip")]
+        else:
+            buttons = [MessageButton((270,120, 60, 30), "OK")]
         
         message_position = self.get_message_position(message_type)
         message_string = self.message_font.render(self.MESSAGE_STRINGS[message_type],True,BLACK)
         
-        self.showScreen(message_type,[button],[(message_string,message_position)])
+        self.showScreen(message_type,buttons,[(message_string,message_position)],character_card,weapon_card,room_card)
     
-    def showScreen(self,message_type,buttons,messages):
+    def showScreen(self,message_type,buttons,messages,character_card=None,weapon_card=None,room_card=None):
         """ This function shows the message screen
         
         :param message_type - type string -- message type to display. Must be a key from the MESSAGE_STRINGS
@@ -525,73 +545,261 @@ class Message:
         
         running = True
         while running:
+            
             for event in pygame.event.get():
                 if event.type == QUIT or (event.type == KEYDOWN and event.key == K_ESCAPE):
                     pygame.quit()
                     running = False
                 for x in xrange(len(buttons)):
                     button = buttons[x]
-                    if 'click' in button.handleEvent(event):
+                    eventhandler = button.handleEvent(event)
+                    if 'click' in eventhandler and button.get_caption_name().lower() == "disprove":
+                        accusation_message = self.get_accusationText("Suggestion",character_card,weapon_card,room_card)
+                        form_input = self.disproveAccusation(message_type,accusation_message)
+                        if form_input == None:
+                            self.showNonAccusationScreen("Incomplete")
+                        else:
+                            running = False
+                    elif 'click' in eventhandler and button.get_caption_name().lower() == "skip":
                         running = False
-            
+                    elif 'click' in eventhandler and button.get_caption_name().lower() == "ok":
+                        running = False
+                    
             screen.fill(self.background_color)
             for message,message_position in messages:
                 #screen.blit(self.message_font.render(self.MESSAGE_STRINGS[message_type],True,BLACK),message_position)
                 screen.blit(message,message_position)
             for button in buttons:
                 button.draw(screen)
+            
             pygame.display.update()
     
     def showWin(self):
         message_type = "Player Win"
-        self.showOkayOnlyScreen(message_type)
+        self.showNonAccusationScreen(message_type)
     
     def showLose(self):
         message_type = "Player Lose"
-        self.showOkayOnlyScreen(message_type)
+        self.showNonAccusationScreen(message_type)
     
     def showEnd(self):
         """ This function tells the user has ended because of a player disruption"""
         message_type = "End Game"
-        self.showOkayOnlyScreen(message_type)
+        self.showNonAccusationScreen(message_type)
     
     def showInvalidMove(self):
         message_type = "Invalid Move"
-        self.showOkayOnlyScreen(message_type)
+        self.showNonAccusationScreen(message_type)
     
     def showMove(self):
         message_type = "Player Move"
-        self.showOkayOnlyScreen(message_type)
+        self.showNonAccusationScreen(message_type)
     
+    def mustDisproveTurn(self,character_card,weapon_card,room_card):
+        message_type = "Must Disprove"
+        
+        self.showNonAccusationScreen(message_type,character_card,weapon_card,room_card)
+    
+    def showDisprove(self,character_card,weapon_card,room_card):
+        message_type = "Disprove"
+        self.showAccusation(message_type,character_card,weapon_card,room_card)
+    
+def execute_accusation(message,options):
+    global parser
+    
+    if not options.cards:
+        parser.error("Must specify cards for accusation")
+        return
+    
+    char_card, weapon_card, room_card = get_accusationCards(options)
+    
+    if not all([char_card,weapon_card,room_card]):
+        parser.error("Character card, weapon card, and/or room card must be specified")
+        return
+    
+    message.showAccusation("Suggestion",char_card,weapon_card,room_card)
 
-def test():
+def execute_mustDisprove(message,options):
+    global parser
+    
+    if not options.cards:
+        parser.error("Must specify cards for accusation")
+        return
+    
+    char_card, weapon_card, room_card = get_accusationCards(options)
+    
+    if not all([char_card,weapon_card,room_card]):
+        parser.error("Character card, weapon card, and/or room card must be specified")
+        return
+    
+    message.mustDisproveTurn(char_card,weapon_card,room_card)
+
+
+def get_accusationCards(options):
+    """ This function parses the cards from the options and returns Card objects"""
     card_deck = CardDeck()
-    message = Message()
-    
-    message.startGame()
-    message.showMove()
-    message.showInvalidMove()
-    
-    form_input = message.showAccusation("Suggestion",card_deck.get_random_card("character"),card_deck.get_random_card("weapon"), card_deck.get_random_card("room"),True)
     char_card = None
     weapon_card = None
     room_card = None
-    if form_input != None and len(form_input) > 0:
-        for cardtype, card_name in form_input.iteritems():
-            requested_card = card_deck.get_card(card_name,cardtype)
-            if requested_card != None:
-                if cardtype == "character":
-                    char_card = requested_card
-                elif cardtype == "weapon":
-                    weapon_card = requested_card
-                elif cardtype == "room":
-                    room_card = requested_card
-        message.showAccusation("Disprove",char_card,weapon_card,room_card)
+    card_names = options.cards.split(",")
+    for card_name in card_names:
+        requested_card = card_deck.get_card(card_name)
+        cardtype = requested_card.get_cardtype()
+        if cardtype == "character":
+            char_card = requested_card
+        elif cardtype == "weapon":
+            weapon_card = requested_card
+        elif cardtype == "room":
+            room_card = requested_card
+    return char_card, weapon_card, room_card
+
+def execute_disprove(message,options):
+    global parser
     
-    message.showWin()
-    message.showLose()
-    message.showEnd()
+    if not options.cards:
+        parser.error("Must specify cards for accusation")
+        return
+    
+    char_card, weapon_card, room_card = get_accusationCards(options)
+    
+    if not any([char_card,weapon_card,room_card]):
+        parser.error("Character card, weapon card, or room card must be specified")
+        return
+    
+    message.showDisprove(char_card,weapon_card,room_card)
+
+def test():
+    card_deck = CardDeck()
+    
+    message_types = ['start', 'move', 'invalidMove', 'accuse','mustDisprove', 'disprove', 'win', 'lose', 'end']
+    for message_type in message_types:
+        if message_type != "accuse" and message_type != "disprove" and message_type != "mustDisprove":
+            create_message(message_type)
+        else:
+            char_card = None
+            weapon_card = None
+            room_card = None
+            need_card_types = ['character','weapon','room']
+            for cardtype in need_card_types:
+                requested_card = card_deck.get_random_card(cardtype)
+                if requested_card != None:
+                    if cardtype == "character":
+                        char_card = requested_card
+                    elif cardtype == "weapon":
+                        weapon_card = requested_card
+                    elif cardtype == "room":
+                        room_card = requested_card
+            card_names = ",".join([x.get_name() for x in [char_card,weapon_card,room_card]])
+            create_message(message_type,card_names)
+
+def execute(options):
+    
+    message = Message()
+    if options.start:
+        message.startGame()
+    elif options.move:
+        message.showMove()
+    elif options.invalid_move:
+        message.showInvalidMove()
+    elif options.accuse:
+        execute_accusation(message,options)
+    elif options.mustDisprove:
+        execute_mustDisprove(message,options)
+    elif options.disprove:
+        execute_disprove(message,options)
+    elif options.win:
+        message.showWin()
+    elif options.lose:
+        message.showLose()
+    elif options.end:
+        message.showEnd()
+    elif options.test:
+        test()
+    else:
+        parser.error("No options specified")
+
+
+def create_message(message_type,cards=None):
+    """ This function creates a separate process to show the message
+    
+    :param message_type - type str -- message type
+    :param cards - type str -- comma-separated name of cards
+     """
+    commands = ["python",os.path.abspath(__file__)]
+    
+    if message_type == "start":
+        commands.append("--start")
+    elif message_type == "move":
+        commands.append("--move")
+    elif message_type == "invalidMove":
+        commands.append("--invalidMove")
+    elif message_type == "accuse":
+        commands.extend(["--accuse","--cards","'{0}'".format(cards)])
+    elif message_type =="mustDisprove":
+        commands.extend(["--mustDisprove","--cards","'{0}'".format(cards)])
+    elif message_type == "disprove":
+        commands.extend(["--disprove","--cards","'{0}'".format(cards)])
+    elif message_type == "win":
+        commands.append("--win")
+    elif message_type == "lose":
+        commands.append("--lose")
+    elif message_type == "end":
+        commands.append("--end")
+    else:
+        print >> sys.stderr, "ERROR: UNKNOWN MESSAGE TYPE: ", message_type
+    
+    os.system(" ".join(commands))
     
 if __name__ == "__main__":
-    test()
+    import optparse
+    
+    usage = "usage: %prog [options]"
+    parser = optparse.OptionParser(usage=usage)
+    
+    parser.add_option("--start",
+                      action="store_true", dest="start", default=False,
+                      help="Show start message")
+    
+    parser.add_option("--move",
+                      action="store_true", dest="move", default=False,
+                      help="Show move message")
+    
+    parser.add_option("--invalidMove",
+                      action="store_true", dest="invalid_move", default=False,
+                      help="Show invalid move message")
+    
+    parser.add_option("--accuse",
+                      action="store_true", dest="accuse", default=False,
+                      help="Show accuse message")
+    
+    parser.add_option("--mustDisprove",
+                      action="store_true", dest="mustDisprove", default=False,
+                      help="Show Must Disprove message")
+    
+    parser.add_option("--disprove",
+                      action="store_true", dest="disprove", default=False,
+                      help="Show accuse message")
+    
+    parser.add_option("--win",
+                      action="store_true", dest="win", default=False,
+                      help="Show win message")
+    
+    parser.add_option("--lose",
+                      action="store_true", dest="lose", default=False,
+                      help="Show lose message")
+    
+    parser.add_option("--end",
+                      action="store_true", dest="end", default=False,
+                      help="Show end message")
+    
+    parser.add_option("--cards", dest="cards", default=False,
+                      help="List of cards (comma separated)")
+    
+    parser.add_option("--test",
+                      action="store_true", dest="test", default=False,
+                      help="Run tests")
+    
+    (options, args) = parser.parse_args()
+    
+    execute(options)
     
