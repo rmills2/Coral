@@ -183,6 +183,7 @@ def isValidSecretPassage(areaToGo, characterArea):
         return True
     return False
 
+
 ############## Main Loop to create Rooms and Characters ##############
 for i in range(5):
     x = 0

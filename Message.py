@@ -531,7 +531,7 @@ class Message:
         message_position = self.get_message_position(message_type)
         message_string = self.message_font.render(self.MESSAGE_STRINGS[message_type],True,BLACK)
         
-        self.showScreen(message_type,buttons,[(message_string,message_position)],character_card,weapon_card,room_card)
+        return self.showScreen(message_type,buttons,[(message_string,message_position)],character_card,weapon_card,room_card)
     
     def showScreen(self,message_type,buttons,messages,character_card=None,weapon_card=None,room_card=None):
         """ This function shows the message screen
@@ -543,6 +543,7 @@ class Message:
         """
         screen = self.getScreen(message_type)
         
+        form_input = None
         running = True
         while running:
             
@@ -573,6 +574,7 @@ class Message:
                 button.draw(screen)
             
             pygame.display.update()
+        return form_input
     
     def showWin(self):
         message_type = "Player Win"
@@ -598,7 +600,7 @@ class Message:
     def mustDisproveTurn(self,character_card,weapon_card,room_card):
         message_type = "Must Disprove"
         
-        self.showNonAccusationScreen(message_type,character_card,weapon_card,room_card)
+        return self.showNonAccusationScreen(message_type,character_card,weapon_card,room_card)
     
     def showDisprove(self,character_card,weapon_card,room_card):
         message_type = "Disprove"
@@ -749,7 +751,8 @@ def create_message(message_type,cards=None):
         print >> sys.stderr, "ERROR: UNKNOWN MESSAGE TYPE: ", message_type
     
     os.system(" ".join(commands))
-    
+    return True
+
 if __name__ == "__main__":
     import optparse
     

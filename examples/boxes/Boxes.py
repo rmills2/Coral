@@ -2,6 +2,7 @@ import pygame
 import math
 from PodSixNet.Connection import ConnectionListener, connection
 from time import sleep
+
 class BoxesGame(ConnectionListener):
     def initSound(self):
         pygame.mixer.music.load("music.wav")
@@ -9,6 +10,7 @@ class BoxesGame(ConnectionListener):
         self.loseSound = pygame.mixer.Sound('lose.wav')
         self.placeSound = pygame.mixer.Sound('place.wav')
         pygame.mixer.music.play()
+    
     def Network_close(self, data):
         exit()
     def Network_yourturn(self, data):
@@ -32,6 +34,7 @@ class BoxesGame(ConnectionListener):
     def Network_yourturn(self, data):
         #torf = short for true or false
         self.turn = data["torf"]
+    
     def __init__(self):
     	self.justplaced=10
         self.boardh = [[False for x in range(6)] for y in range(7)]
