@@ -1,5 +1,6 @@
 from PodSixNet.Connection import ConnectionListener, connection
 import Message,time
+import jsonpickle
 
 import sys
 
@@ -17,21 +18,24 @@ class ClueLessClient(ConnectionListener):
         print "SERVER SAYS HELLO!"
     
     def Network_close(self, data):
-        exit()
-    
-    def Network_yourturn(self, data):
-        #torf = short for true or false
-        self.turn = data["torf"]
+        sys.exit()
     
     def Network_startgame(self, data):
         global ClueBoard
-        print "STARTING GAME FROM CLIENT SIDE!"
-        Message.create_message("start")
-        connection.Send({"action":"hello","ID":self.gameid})
-        import ClueBoard
-        
+        player_character = data['character']
+        player_cards = data['cards']
+        success,cards = Message.create_message("start")
+        if success:
+            import ClueBoard
+            connection.Send({"action":"success","ID":self.gameid})
+        else:
+            connection.Send({"action":"fail","ID":self.gameid})
+    
+    def Network_updateTurn(self,data):
+        """ This function is to update the player's server turn index """
+    
     def Network_setId(self,data):
-        
+        """ This function sets the client's ID"""
         self.gameid = data['ID']
         
     def Network_displayGameId(self,data):

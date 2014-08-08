@@ -1,12 +1,15 @@
 import PodSixNet.Channel
 import PodSixNet.Server
 import Message, random
+from CardDeck import CardDeck
+import jsonpickle, sys
 
 from time import sleep
 
 class ClientChannel(PodSixNet.Channel.Channel):
     def Network(self, data):
-        print data
+        #print data
+        pass
     
     def Network_place(self, data):
         #deconsolidate all of the data from the dictionary
@@ -33,6 +36,13 @@ class ClientChannel(PodSixNet.Channel.Channel):
     
     def Network_hello(self,data):
         print "CLIENT {0} SAYS HELLO TO YOU, SERVER!".format(data['ID'])
+    
+    def Network_success(self,data):
+        print "CLIENT {0} RESPONSES WITH SUCCESS!".format(data['ID'])
+    
+    def Network_fail(self,data):
+        print "CLIENT {0} RESPONSES WITH FAILURE!".format(data['ID'])
+    
     
     def Close(self):
         self._server.close(self.gameid)
@@ -67,6 +77,13 @@ class ClueLessServer(PodSixNet.Server.Server):
         # Loop through all of the squares
         self.Pump()
 
+class ExamplePlayer:
+    """ This Player class is just an example class to mimic the Player class that Xu needs to work on """
+    def __init__(self):
+        
+        card_deck = CardDeck()
+        self.char_name = card_deck.get_random_card("character")
+    
 class ClueLessGame:
     def __init__(self):
         """
@@ -75,11 +92,22 @@ class ClueLessGame:
         :param playerChannel - player channel
         :param currentIndex - current index of the player
         """
-        # whose turn (1 or 0)
+        self.card_deck = CardDeck()
+        
+        self.confidential_card_types = ['character','weapon','room']
+        self.confidential_file = []
+        
         self.minPlayers = 2         #  Minimum number of players to play the game
         self.active_turn = 0
         self.disprove_turn = 0
         self.playerChannels = []
+        
+        self.select_confidential_cards()
+    
+    def select_confidential_cards(self):
+        """ This function selects cards from the confidential file"""
+        for cardtype in self.confidential_card_types:
+            self.confidential_file.append(self.card_deck.get_random_card(cardtype))
     
     def add_player(self,playerChannel):
         """ This function adds another player to the game"""
@@ -89,8 +117,39 @@ class ClueLessGame:
     
     def startGame(self):
         print "STARTING GAME FROM SERVER!"
-        for player in self.playerChannels:
-            player.Send({"action":"startgame","name":"example"})
+        
+        assigned_characters,assigned_cards = self.distribute_cards()
+        
+        for x in xrange(len(self.playerChannels)):
+            player = self.playerChannels[x]
+            player_character = assigned_characters[x].get_name()
+            player_cards = [card.get_name() for card in assigned_cards[x]]
+            player.Send({"action":"startgame","character":player_character,"cards":player_cards})
+    
+    def distribute_cards(self):
+        """ This function iterates through the card deck, randomly assigns players a character, and the rest of cards in the deck """
+        card_tracker = self.confidential_file
+        assigned_chars = []     # Assigned character for each player
+        assigned_cards = [[] for x in xrange(len(self.playerChannels))]    # Assigned cards for each player
+        for x in xrange(len(self.playerChannels)):
+            player = self.playerChannels[x]
+            char_card = self.card_deck.get_random_card("character",card_tracker)
+            
+            card_tracker.append(char_card)
+            assigned_chars.append(char_card)
+        
+        x = 0
+        while len(card_tracker) < self.card_deck.length():
+            
+            card = self.card_deck.get_random_card(None,card_tracker)
+            x = x+1 if x < len(assigned_cards)-1 else 0
+            assigned_cards[x].append(card)
+            card_tracker.append(card)
+        
+        print "final assigned_chars: ", assigned_chars
+        print "final assigned_cards: ", assigned_cards
+        
+        return assigned_chars,assigned_cards
     
     def endGame(self):
         for player in self.playerChannels:
