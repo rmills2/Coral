@@ -3,6 +3,7 @@ from scratchpad import ScratchPad
 from client import *
 from Message import *
 from players import *
+from cardAreaClass import *
 from pygame.locals import *
 
 ############## Color Declarations ##############
@@ -38,6 +39,12 @@ entries = scratchPad.runScratchPad()
 
 ############## Player Area Integration ################
 playerArea = PlayerArea([], display, 600, 320)
+
+
+############## Card Area Initialization ##############
+cardArea = cardArea(display)
+myCards = ['Wrench', 'Prof. Plum', 'Col. Mustard', 'Mrs. White'] # cards should come from server
+cardArea.placeCards(myCards) 
 
 ############## Internal Class Declarations ##############
 class GameBoard:
