@@ -501,7 +501,6 @@ class Message:
             message_pos = self.get_accusation_position(card,cardtype)
             messages.append((message_str,message_pos,accusation_str))
         
-        print "FINAL MESSAGES: ", messages
         return messages
     
     def showAccusation(self,message_type,character_card=None,weapon_card=None,room_card=None,mustDisprove=False):
