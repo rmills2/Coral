@@ -21,6 +21,16 @@ TAN= (247, 231, 160)
 #client = ClueLessClient(ConnectionListener)
 
 
+
+############## Global Variable Declarations ###############
+x = 0
+characterArray = []
+global specialRooms, spotArray
+spotArray = []
+specialRooms = []
+color = BLACK
+
+
 ############## Game and Font Initialization ###############
 pygame.init()
 display = pygame.display.set_mode((900, 800), HWSURFACE|DOUBLEBUF)
@@ -61,7 +71,59 @@ class GameBoard:
         return self.player
     def getPlayerId(self):
         return self.playerId
-    
+    def drawGameBoard(self):
+        ############## Main Loop to create Rooms and Characters ##############
+        y = 0
+        arrayCount = 0
+        colorCount = 0
+        for i in range(5):
+            x = 0
+            for j in range(5):
+                rect = pygame.Rect(x * 10, y * 10, 120, 100)
+                if (i ==0 or i == 2 or i == 4) and (j == 0 or j == 2 or j == 4):
+                    Area.draw(rect, TAN)
+                    currentImage = pygame.transform.scale(pygame.image.load('resources/images/' + images[arrayCount]), (120, 100)).convert_alpha()
+                    display.blit(currentImage, (rect.x, rect.y))
+                    display.blit(roomFont.render(roomArray[arrayCount], True, (255,255,255)), (rect.x + 10, rect.y + 75))
+            
+                    if (i == 0 and j == 0) or (i == 0 and j ==4) or (i == 4 and j == 0) or (i == 4 and j == 4):
+                        specialRoom = SpecialRoom(rect.x, rect.y, 6, [], roomArray[arrayCount], currentImage, [])
+                        spotArray.append(specialRoom)
+                        specialRooms.append(specialRoom)
+                    else:
+                        spotArray.append(Room(rect.x, rect.y, 6, [], roomArray[arrayCount], currentImage))
+        
+                    arrayCount+= 1
+                else:
+                    hallway = []
+                    Area.draw(rect, TAN)
+                    if i%2 == 1 and j%2 == 0:
+                        hallway = Hallway(rect.x, rect.y, 1, [], True)
+                        hallway.draw()
+                        spotArray.append(hallway)
+                    elif i%2 == 0 and j%2 == 1:
+                        hallway = Hallway(rect.x, rect.y, 1, [], False)
+                        hallway.draw()
+                        spotArray.append(hallway)
+                if (j == 0 and i % 2 == 1) or (i == 4 and j % 2 == 1) or (j == 4 and i == 1) or (i == 0 and j == 1):
+                    character = Character(characters[i], colorsArray[colorCount], areaAt(spotArray, rect.x, rect.y))
+                    colorCount += 1
+                    area = character.currentArea
+                    area.currentOccupants.append(character)
+                    characterArray.append(character)
+                    character.draw()
+                x += 12
+            y += 10
+        ############## Associate Special Rooms ##################
+        for i in range(len(specialRooms)):
+            for j in range(len(specialRooms)):
+                spA = specialRooms[i]
+                spB = specialRooms[j]
+                if (spA != spB and spA.x != spB.x and spA.y != spB.y and spA.secretPassageSpot == []):
+                    spA.secretPassageSpot = spB
+                    spB.secretPassageSpot = spA
+
+
 class Character:
     def __init__(self, name, color, currentArea):
         self.name = name
@@ -188,17 +250,6 @@ characters = ['Player1', 'Player2', 'Player3', '4', '5']
 colorsArray = [GREEN, RED, BLUE, PURPLE, WHITE, YELLOW]
 
 
-############## Global Variable Declarations ###############
-x = 0
-y = 0
-characterArray = []
-color = BLACK
-arrayCount = 0
-spotArray = []
-specialRooms = []
-colorCount = 0
-
-
 ############## Utility Methods #################
 
 def areaAt(spotArray, x, y):
@@ -213,55 +264,9 @@ def isValidSecretPassage(areaToGo, characterArea):
     return False
 
 
-############## Main Loop to create Rooms and Characters ##############
-for i in range(5):
-    x = 0
-    for j in range(5):
-        rect = pygame.Rect(x * 10, y * 10, 120, 100)
-        if (i ==0 or i == 2 or i == 4) and (j == 0 or j == 2 or j == 4):
-            Area.draw(rect, TAN)
-            currentImage = pygame.transform.scale(pygame.image.load('resources/images/' + images[arrayCount]), (120, 100)).convert_alpha()
-            display.blit(currentImage, (rect.x, rect.y))
-            display.blit(roomFont.render(roomArray[arrayCount], True, (255,255,255)), (rect.x + 10, rect.y + 75))
-            
-            if (i == 0 and j == 0) or (i == 0 and j ==4) or (i == 4 and j == 0) or (i == 4 and j == 4):
-                specialRoom = SpecialRoom(rect.x, rect.y, 6, [], roomArray[arrayCount], currentImage, [])
-                spotArray.append(specialRoom)
-                specialRooms.append(specialRoom)
-            else:
-                spotArray.append(Room(rect.x, rect.y, 6, [], roomArray[arrayCount], currentImage))
-
-            arrayCount+= 1
-        else:
-            hallway = []
-            Area.draw(rect, TAN)
-            if i%2 == 1 and j%2 == 0:
-                hallway = Hallway(rect.x, rect.y, 1, [], True)
-                hallway.draw()
-                spotArray.append(hallway)
-            elif i%2 == 0 and j%2 == 1:
-                hallway = Hallway(rect.x, rect.y, 1, [], False)
-                hallway.draw()
-                spotArray.append(hallway)
-        if (j == 0 and i % 2 == 1) or (i == 4 and j % 2 == 1) or (j == 4 and i == 1) or (i == 0 and j == 1):
-            character = Character(characters[i], colorsArray[colorCount], areaAt(spotArray, rect.x, rect.y))
-            colorCount += 1
-            area = character.currentArea
-            area.currentOccupants.append(character)
-            characterArray.append(character)
-            character.draw()
-        x += 12
-    y += 10
-
-############## Associate Special Rooms ##################
-for i in range(len(specialRooms)):
-    for j in range(len(specialRooms)):
-        spA = specialRooms[i]
-        spB = specialRooms[j]
-        if (spA != spB and spA.x != spB.x and spA.y != spB.y and spA.secretPassageSpot == []):
-            spA.secretPassageSpot = spB
-            spB.secretPassageSpot = spA
-    
+############## Create the GameBoard #####################
+gameBoard = GameBoard(myCards, [], 1)
+gameBoard.drawGameBoard()
 
 ############### Draw Border ###################
 pygame.draw.rect(display, BLACK, (0, 0, 600, 500), 4)
@@ -272,9 +277,6 @@ turn = 0
 youAre = 2
 playerArea.players[turn].drawPlayerArrow(display, playerArea.players[turn].getColor(), False)
 playerArea.players[youAre].drawBox(display)
-
-############## Create Message ###################
-#create_message("start", [])
 
 while True:
     for event in pygame.event.get():
