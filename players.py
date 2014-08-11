@@ -52,14 +52,20 @@ class PlayerArea:
     def initialize(self, display, rectx, recty):
         pygame.draw.rect(display, TAN, (rectx, recty, 300, 180))
         pygame.draw.rect(display, BLACK, (rectx, recty, 300, 180), 4)
-        x = rectx + 100
+        x = rectx + 35
         y = recty + 65
         self.players = []
         for i in range(6):  
             self.players.append(Player(x, y, colorsArray[i]))
             pygame.draw.circle(display, colorsArray[i], (x, y), 15)
             if i == 2:
-                x = rectx + 100
+                x = rectx + 35
                 y += 50
             else:
                 x += 50
+        pygame.draw.rect(display, (128, 128, 128), (770, 460, 130, 40))
+        pygame.draw.rect(display, BLACK, (770, 460, 130, 40), 3)
+        roomFont = pygame.font.SysFont("Times New Roman", 12)
+        roomFont.set_bold(True)
+        display.blit(roomFont.render("Make final", True, (255,255,255)), (800, 465))
+        display.blit(roomFont.render("Accusation", True, WHITE), (800, 480))
