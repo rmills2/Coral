@@ -97,6 +97,7 @@ class Form(object):
 		self._bg_surf_align = bg_surf_align
 		self._flip = True
 		self._skip = False
+		self._clear = False
 	
 	def _next(self):
 		# Run hook
@@ -206,14 +207,14 @@ class Form(object):
 		if not name in self._objects:
 			raise KeyError('Form does not contain a "%s" object' % name)
 		return self._objects[name].value()
-
+	
 	def clear(self):
 		# Run hook
 		self._hooks.run('__clear__')
 		# Restore all values to default
 		for _, obj in self._objects.iteritems():
 			obj._reset()
-
+	
 	def submit(self):
 		# Stop running
 		self._running = False
@@ -221,7 +222,7 @@ class Form(object):
 	def skip(self):
 		self._running = False
 		self._skip = True
-	
+		
 	def add_object(self, name, obj, index=None):
 		''' Add object to Form with reference "name". '''
 		if name not in self._objects:
@@ -241,6 +242,7 @@ class Form(object):
 					n = obj._index[j]
 					self.add_object(n, obj._objects[n], index+j+1)
 		else:
+			print "self._objects: ", self._objects
 			raise ValueError('Form object already contains a "%s" object' % name)
 
 	def rem_object(self, name):

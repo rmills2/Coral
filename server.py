@@ -97,7 +97,7 @@ class ClueLessGame:
         self.confidential_card_types = ['character','weapon','room']
         self.confidential_file = []
         
-        self.minPlayers = 2         #  Minimum number of players to play the game
+        self.minPlayers = 3         #  Minimum number of players to play the game
         self.active_turn = 0
         self.disprove_turn = 0
         self.playerChannels = []

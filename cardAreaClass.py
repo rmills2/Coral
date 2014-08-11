@@ -22,6 +22,7 @@ class cardArea:
         display.blit(cardAreaImg,(cardAreax, cardAreay))
         
     def placeCards(self, cardList):
+        print "PLACING CARDS: ", cardList
         myfont = pygame.font.SysFont("Times New Roman", 20)   
         x=44
         y=685

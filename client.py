@@ -1,6 +1,7 @@
 from PodSixNet.Connection import ConnectionListener, connection
 import Message,time
 import jsonpickle
+from cardAreaClass import cardArea
 
 import sys
 
@@ -9,7 +10,8 @@ class ClueLessClient(ConnectionListener):
     def __init__(self,host,port):
         self.gameid = None
         self.Connect((host, int(port)))
-        
+        self.card_area = None
+    
     def Network(self, data):
         #print 'network data:', data
         pass
@@ -25,7 +27,11 @@ class ClueLessClient(ConnectionListener):
         player_character = data['character']
         player_cards = data['cards']
         success,cards = Message.create_message("start")
+        print "player_cards: ", player_cards
+        print "start success?: ", success
         if success:
+            print "sys.argv BEFORE: ", sys.argv
+            sys.argv.append(",".join(player_cards))
             import ClueBoard
             connection.Send({"action":"success","ID":self.gameid})
         else:

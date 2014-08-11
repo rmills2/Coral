@@ -5,6 +5,7 @@ from Message import *
 from players import *
 from cardAreaClass import *
 from pygame.locals import *
+import sys
 
 ############## Color Declarations ##############
 WHITE = (255, 255, 255)
@@ -43,8 +44,10 @@ playerArea = PlayerArea([], display, 600, 320)
 
 ############## Card Area Initialization ##############
 cardArea = cardArea(display)
-myCards = ['Wrench', 'Prof. Plum', 'Col. Mustard', 'Mrs. White'] # cards should come from server
+#myCards = ['Wrench', 'Prof. Plum', 'Col. Mustard', 'Mrs. White'] # cards should come from server
+myCards = sys.argv[1].split(",") if len(sys.argv) > 1 else ['Wrench', 'Prof. Plum', 'Col. Mustard', 'Mrs. White']# cards should come from server
 cardArea.placeCards(myCards) 
+
 
 ############## Internal Class Declarations ##############
 class GameBoard:
@@ -127,9 +130,11 @@ class Area:
         return self.maxOccupancy
     def currentOccupants(self):
         return self.currentOccupants
+    
     @staticmethod
     def draw(rect, color):
         pygame.draw.rect(display, color, rect)
+    
     def isAdjacent(self, spots, characterArea):
         if self not in self.getValidAreas(characterArea, spots):
             print "Not adjacent!"
@@ -269,7 +274,7 @@ playerArea.players[turn].drawPlayerArrow(display, playerArea.players[turn].getCo
 playerArea.players[youAre].drawBox(display)
 
 ############## Create Message ###################
-create_message("start", [])
+#create_message("start", [])
 
 while True:
     for event in pygame.event.get():
@@ -311,8 +316,9 @@ while True:
                                ## if Player == "PlayerFromCard"
                                ## draw player at spot as well to move them there
                                cards="Dagger,Prof. Plum,Lounge"
-                               create_message("accuse", cards)
+                               #create_message("accuse", cards)
                                print "Would you like to make an accusation?"
+                               create_message("newSuggestion")
                            else:
                                currentCharacter.draw()
                 yVal = 0
@@ -335,7 +341,8 @@ while True:
                 if rect.collidepoint(event.pos):
                     print "MAKING FINAL ACCUSATION"
                     cards="Wrench,Prof. Plum,Kitchen"
-                    create_message("accuse", cards)                    
+                    #create_message("accuse", cards)#
+                    create_message("newSuggestion")
         if event.type == QUIT:
             pygame.quit()
             sys.exit()
