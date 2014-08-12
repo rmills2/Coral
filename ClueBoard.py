@@ -7,6 +7,7 @@ from cardAreaClass import *
 from pygame.locals import *
 import sys
 
+
 ############## Color Declarations ##############
 WHITE = (255, 255, 255)
 BLACK = (0, 0, 0)
@@ -17,6 +18,14 @@ YELLOW = (255, 255, 0)
 PURPLE = (255, 0, 255)
 TAN= (247, 231, 160)
 
+
+############## Create global arrays ###############
+
+images = ['study.png', 'hall.png', 'lounge.png', 'library.png', 'billiardRoom.png', 'diningRoom.png', 'conservatory.png', 'ballroom.png', 'kitchen.png']
+roomArray = ['Study','Hall','Lounge','Library','Billiard Room','Dining Room','Conservatory','Ballroom','Kitchen']
+characters = ['Player1', 'Player2', 'Player3', '4', '5']
+colorsArray = [GREEN, RED, BLUE, PURPLE, WHITE, YELLOW]
+
 ############## Initialize Client ###############
 #client = ClueLessClient(ConnectionListener)
 
@@ -25,38 +34,9 @@ TAN= (247, 231, 160)
 ############## Global Variable Declarations ###############
 x = 0
 characterArray = []
-global specialRooms, spotArray
 spotArray = []
 specialRooms = []
 color = BLACK
-
-
-############## Game and Font Initialization ###############
-pygame.init()
-display = pygame.display.set_mode((900, 800), HWSURFACE|DOUBLEBUF)
-pygame.display.set_caption('Board')
-myfont = pygame.font.SysFont("Times New Roman", 50)
-roomFont = pygame.font.SysFont("Times New Roman", 15)
-roomFont.set_bold(True)
-display.fill(TAN)
-
-############## Scratch Pad Integration ################
-
-scratchColorsArray = []
-allArray = []
-scratchPad = ScratchPad(display, scratchColorsArray, allArray)
-entries = scratchPad.runScratchPad()
-
-
-############## Player Area Integration ################
-playerArea = PlayerArea([], display, 600, 320)
-
-
-############## Card Area Initialization ##############
-cardArea = cardArea(display)
-#myCards = ['Wrench', 'Prof. Plum', 'Col. Mustard', 'Mrs. White'] # cards should come from server
-myCards = sys.argv[1].split(",") if len(sys.argv) > 1 else ['Wrench', 'Prof. Plum', 'Col. Mustard', 'Mrs. White']# cards should come from server
-cardArea.placeCards(myCards) 
 
 
 ############## Internal Class Declarations ##############
@@ -65,13 +45,15 @@ class GameBoard:
         self.cardAreaCards = cardAreaCards
         self.player = player
         self.playerId = playerId
+        self.area = Area()
+    
     def getCardAreaCards(self):
         return self.cardAreaCards
     def getPlayer(self):
         return self.player
     def getPlayerId(self):
         return self.playerId
-    def drawGameBoard(self):
+    def drawGameBoard(self,display):
         ############## Main Loop to create Rooms and Characters ##############
         y = 0
         arrayCount = 0
@@ -81,7 +63,7 @@ class GameBoard:
             for j in range(5):
                 rect = pygame.Rect(x * 10, y * 10, 120, 100)
                 if (i ==0 or i == 2 or i == 4) and (j == 0 or j == 2 or j == 4):
-                    Area.draw(rect, TAN)
+                    self.area.draw(display,rect, TAN)
                     currentImage = pygame.transform.scale(pygame.image.load('resources/images/' + images[arrayCount]), (120, 100)).convert_alpha()
                     display.blit(currentImage, (rect.x, rect.y))
                     display.blit(roomFont.render(roomArray[arrayCount], True, (255,255,255)), (rect.x + 10, rect.y + 75))
@@ -96,7 +78,7 @@ class GameBoard:
                     arrayCount+= 1
                 else:
                     hallway = []
-                    Area.draw(rect, TAN)
+                    self.area.draw(display,rect, TAN)
                     if i%2 == 1 and j%2 == 0:
                         hallway = Hallway(rect.x, rect.y, 1, [], True)
                         hallway.draw()
@@ -193,8 +175,7 @@ class Area:
     def currentOccupants(self):
         return self.currentOccupants
     
-    @staticmethod
-    def draw(rect, color):
+    def draw(self,display,rect, color):
         pygame.draw.rect(display, color, rect)
     
     def isAdjacent(self, spots, characterArea):
@@ -241,15 +222,6 @@ class SpecialRoom(Room):
     def secretPassageSpot(self):
         return self.secretPassageSpot
 
-
-############## Create global arrays ###############
-
-images = ['study.png', 'hall.png', 'lounge.png', 'library.png', 'billiardRoom.png', 'diningRoom.png', 'conservatory.png', 'ballroom.png', 'kitchen.png']
-roomArray = ['Study','Hall','Lounge','Library','Billiard Room','Dining Room','Conservatory','Ballroom','Kitchen']
-characters = ['Player1', 'Player2', 'Player3', '4', '5']
-colorsArray = [GREEN, RED, BLUE, PURPLE, WHITE, YELLOW]
-
-
 ############## Utility Methods #################
 
 def areaAt(spotArray, x, y):
@@ -263,90 +235,137 @@ def isValidSecretPassage(areaToGo, characterArea):
         return True
     return False
 
-
-############## Create the GameBoard #####################
-gameBoard = GameBoard(myCards, [], 1)
-gameBoard.drawGameBoard()
-
-############### Draw Border ###################
-pygame.draw.rect(display, BLACK, (0, 0, 600, 500), 4)
-
-
-############### Main Game Loop for Game-Play Interaction #################
-turn = 0
-youAre = 2
-playerArea.players[turn].drawPlayerArrow(display, playerArea.players[turn].getColor(), False)
-playerArea.players[youAre].drawBox(display)
-
-while True:
-    for event in pygame.event.get():
-        #if turn == youAre:
-            #create_message("move")
-        if event.type == pygame.MOUSEBUTTONUP:
-            #if GameBoard.getPlayerId == client.turn:
-                for i in range(len(spotArray)):
-                    rect = pygame.Rect(spotArray[i].x, spotArray[i].y, 120, 100)
-                    if rect.collidepoint(event.pos):
-                       currentCharacter = characterArray[turn % len(characterArray)]
-                       characterRect = pygame.Rect(currentCharacter.currentArea.x, currentCharacter.currentArea.y, 120, 100)
-                       if isValidSecretPassage(spotArray[i], currentCharacter.currentArea) == False and spotArray[i].isAdjacent(spotArray, currentCharacter.currentArea) == False or spotArray[i].maxOccupancy - len(spotArray[i].currentOccupants) <= 0:
-                           create_message("invalidMove")
-                           break
-                       else:
-                           currentCharacter.moveCharacter(spotArray[i])
-                           
-                            ##### Update the player area
-                           previousPlayer = playerArea.players[turn % len(playerArea.players)]
-                           if turn % len(playerArea.players) == 2:
-                               previousPlayer.drawPlayerArrow(display, TAN, False)
-                           elif turn % len(playerArea.players) == 5:
-                               previousPlayer.drawPlayerArrow(display, TAN, True)
-                           turn += 1
-                           currentPlayer = playerArea.players[turn % len(playerArea.players)]
-                
-                           if turn % len(playerArea.players) > 2:
-                               previousPlayer.drawPlayerArrow(display, TAN, True)
-                               currentPlayer.drawPlayerArrow(display, currentPlayer.getColor(), True)
-                           else:
-                               previousPlayer.drawPlayerArrow(display, TAN, False)
-                               currentPlayer.drawPlayerArrow(display, currentPlayer.getColor(), False)
-                           if isinstance(spotArray[i], Room):
-                               currentCharacter.draw()
-                               pygame.display.update()
-                               ### This would be a prompt instead
-                               ## for Player in Players
-                               ## if Player == "PlayerFromCard"
-                               ## draw player at spot as well to move them there
-                               cards="Dagger,Prof. Plum,Lounge"
-                               #create_message("accuse", cards)
-                               print "Would you like to make an accusation?"
-                               create_message("newSuggestion")
-                           else:
-                               currentCharacter.draw()
-                yVal = 0
+class CluelessGamePlayer:
+    """ This class begins the gameplay by drawing the board """
+    def __init__(self,youAre,turn,myCards):
+        
+        self.display = None
+        self.roomFont = None
+        
+        self.scratchPad = None
+        self.entries = None
+        self.playerArea = None
+        self.cardArea = None
+        self.gameBoard = None
+        
+        self.turn = turn
+        self.youAre = youAre
+        self.myCards = myCards
+        
+        self.create_board()
+        self.create_scratchPad()
+        self.create_playerArea()
+        self.create_cardArea()
+        self.create_gameBoard()
+        self.draw_border()
     
-                ##### Checks for scratch pad #####
-                for i in range(len(entries)):
-                    r = entries[i].getRect()
-                    if r.collidepoint(event.pos):
-                        if scratchPad.scratchColorsArray[i] == True:
-                            pygame.draw.line(display, RED, (r.x, r.y + 10), (r.x + 120, r.y + 10), 3)
-                            scratchPad.scratchColorsArray[i] = False
-                        else:
-                            scratchPad.redrawEntryArea(display, r)
-                            scratchPad.blitText(entries[i].getName(), r, display)
-                            scratchPad.scratchColorsArray[i] = True
-                    yVal += 20
+    def updateTurn(self,turn):
+        self.turn = turn
+    
+    def create_board(self):
+        ############## Game and Font Initialization ###############
+        pygame.init()
+        self.display = pygame.display.set_mode((900, 800), HWSURFACE|DOUBLEBUF)
+        pygame.display.set_caption('Board')
+        myfont = pygame.font.SysFont("Times New Roman", 50)
+        self.roomFont = pygame.font.SysFont("Times New Roman", 15)
+        self.roomFont.set_bold(True)
+        self.display.fill(TAN)
+    
+    def create_scratchPad(self):
+        ############## Scratch Pad Integration ################
+        self.scratchPad = ScratchPad(self.display, [], [])
+        self.entries = self.scratchPad.runScratchPad()
+    
+    def create_playerArea(self):
+        ############## Player Area Integration ################
+        self.playerArea = PlayerArea([], self.display, 600, 320)
+    
+    def create_cardArea(self):
+        ############## Card Area Initialization ##############
+        self.cardArea = cardArea(self.display)
+        self.cardArea.placeCards(self.myCards) 
 
-                ##### Checks for making the final accusation #####
-                rect = pygame.Rect(770, 460, 130, 40)
-                if rect.collidepoint(event.pos):
-                    print "MAKING FINAL ACCUSATION"
-                    cards="Wrench,Prof. Plum,Kitchen"
-                    #create_message("accuse", cards)#
-                    create_message("newSuggestion")
-        if event.type == QUIT:
-            pygame.quit()
-            sys.exit()
+    def create_gameBoard(self):
+        ############## Create the GameBoard #####################
+        self.gameBoard = GameBoard(self.myCards, [], 1)
+        self.gameBoard.drawGameBoard(self.display)
+    
+    def draw_border(self):
+        ############### Draw Border ###################
+        pygame.draw.rect(self.self.display, BLACK, (0, 0, 600, 500), 4)
+    
+    def run(self):
+        self.playerArea.players[self.turn].drawPlayerArrow(self.display, self.playerArea.players[self.turn].getColor(), False)
+        self.playerArea.players[self.youAre].drawBox(self.display)
+        
+        while True:
+            for event in pygame.event.get():
+                #if self.turn == self.youAre:
+                    #create_message("move")
+                if event.type == pygame.MOUSEBUTTONUP:
+                    #if GameBoard.getPlayerId == client.self.turn:
+                        for i in range(len(spotArray)):
+                            rect = pygame.Rect(spotArray[i].x, spotArray[i].y, 120, 100)
+                            if rect.collidepoint(event.pos):
+                               currentCharacter = characterArray[self.turn % len(characterArray)]
+                               characterRect = pygame.Rect(currentCharacter.currentArea.x, currentCharacter.currentArea.y, 120, 100)
+                               if isValidSecretPassage(spotArray[i], currentCharacter.currentArea) == False and spotArray[i].isAdjacent(spotArray, currentCharacter.currentArea) == False or spotArray[i].maxOccupancy - len(spotArray[i].currentOccupants) <= 0:
+                                   create_message("invalidMove")
+                                   break
+                               else:
+                                   currentCharacter.moveCharacter(spotArray[i])
+                                   
+                                    ##### Update the player area
+                                   previousPlayer = self.playerArea.players[self.turn % len(self.playerArea.players)]
+                                   if self.turn % len(self.playerArea.players) == 2:
+                                       previousPlayer.drawPlayerArrow(self.display, TAN, False)
+                                   elif self.turn % len(self.playerArea.players) == 5:
+                                       previousPlayer.drawPlayerArrow(self.display, TAN, True)
+                                   self.turn += 1
+                                   currentPlayer = self.playerArea.players[self.turn % len(self.playerArea.players)]
+                        
+                                   if self.turn % len(self.playerArea.players) > 2:
+                                       previousPlayer.drawPlayerArrow(self.display, TAN, True)
+                                       currentPlayer.drawPlayerArrow(self.display, currentPlayer.getColor(), True)
+                                   else:
+                                       previousPlayer.drawPlayerArrow(self.display, TAN, False)
+                                       currentPlayer.drawPlayerArrow(self.display, currentPlayer.getColor(), False)
+                                   if isinstance(spotArray[i], Room):
+                                       currentCharacter.draw()
+                                       pygame.display.update()
+                                       create_message("newSuggestion")
+                                   else:
+                                       currentCharacter.draw()
+                        yVal = 0
             
-    pygame.display.update()
+                        ##### Checks for scratch pad #####
+                        for i in range(len(entries)):
+                            r = entries[i].getRect()
+                            if r.collidepoint(event.pos):
+                                if self.scratchPad.scratchColorsArray[i] == True:
+                                    pygame.draw.line(self.display, RED, (r.x, r.y + 10), (r.x + 120, r.y + 10), 3)
+                                    self.scratchPad.scratchColorsArray[i] = False
+                                else:
+                                    self.scratchPad.redrawEntryArea(self.display, r)
+                                    self.scratchPad.blitText(entries[i].getName(), r, self.display)
+                                    self.scratchPad.scratchColorsArray[i] = True
+                            yVal += 20
+                            
+                        ##### Checks for making the final accusation #####
+                        rect = pygame.Rect(770, 460, 130, 40)
+                        if rect.collidepoint(event.pos):
+                            print "MAKING FINAL ACCUSATION"
+                            cards="Wrench,Prof. Plum,Kitchen"
+                            #create_message("accuse", cards)#
+                            create_message("newSuggestion")
+                if event.type == QUIT:
+                    pygame.quit()
+                    sys.exit()
+                    
+            pygame.display.update()
+
+if __name__ == "__main__":
+    gameplayer = CluelessGamePlayer(0,0,['Wrench', 'Prof. Plum', 'Col. Mustard', 'Mrs. White'])
+    gameplayer.run()
+
