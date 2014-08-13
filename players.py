@@ -55,7 +55,7 @@ class PlayerArea:
         x = rectx + 35
         y = recty + 65
         self.players = []
-        for i in range(6):  
+        for i in range(3):  
             self.players.append(Player(x, y, colorsArray[i]))
             pygame.draw.circle(display, colorsArray[i], (x, y), 15)
             if i == 2:
@@ -69,3 +69,8 @@ class PlayerArea:
         roomFont.set_bold(True)
         display.blit(roomFont.render("Make final", True, (255,255,255)), (800, 465))
         display.blit(roomFont.render("Accusation", True, WHITE), (800, 480))
+        ## Create legend
+        pygame.draw.rect(display, BLACK, (780, 330, 25, 25), 3)
+        display.blit(roomFont.render("= Your Player", True, BLACK), (810, 335))
+        pygame.draw.polygon(display, BLACK, ((790 - 2.5, 370), (790 + 2.5, 370), (790 + 2.5, 390), (7.5 + 790, 390), (790, 400), (790 - 7.5, 390), (790 - 2.5, 390)))
+        display.blit(roomFont.render("= Active Player", True, BLACK), (805, 380))

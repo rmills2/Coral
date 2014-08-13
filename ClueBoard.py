@@ -76,6 +76,7 @@ class GameBoard:
         y = 0
         arrayCount = 0
         colorCount = 0
+        characterCount = 0
         for i in range(5):
             x = 0
             for j in range(5):
@@ -105,13 +106,15 @@ class GameBoard:
                         hallway = Hallway(rect.x, rect.y, 1, [], False)
                         hallway.draw()
                         spotArray.append(hallway)
-                if (j == 0 and i % 2 == 1) or (i == 4 and j % 2 == 1) or (j == 4 and i == 1) or (i == 0 and j == 1):
+                if ((j == 0 and i % 2 == 1) or (i == 4 and j % 2 == 1) or (j == 4 and i == 1) or (i == 0 and j == 1)) and characterCount < 3:
+                    print "Adding Player"
                     character = Character(characters[i], colorsArray[colorCount], areaAt(spotArray, rect.x, rect.y))
                     colorCount += 1
                     area = character.currentArea
                     area.currentOccupants.append(character)
                     characterArray.append(character)
                     character.draw()
+                    characterCount += 1
                 x += 12
             y += 10
         ############## Associate Special Rooms ##################
@@ -263,6 +266,13 @@ def isValidSecretPassage(areaToGo, characterArea):
         return True
     return False
 
+def isAvailableMove(character, spotArray):
+    for i in range(len(spotArray)):
+        if isValidSecretPassage(spotArray[i], character.currentArea) == True or spotArray[i].isAdjacent(spotArray, currentCharacter.currentArea) == True:
+            return True
+    return False
+    
+
 
 ############## Create the GameBoard #####################
 gameBoard = GameBoard(myCards, [], 1)
@@ -284,6 +294,9 @@ while True:
             #create_message("move")
         if event.type == pygame.MOUSEBUTTONUP:
             #if GameBoard.getPlayerId == client.turn:
+                if isAvailableMove(characterArray[turn % len(characterArray)]) == False:
+                    # No available moves message -- increment turn
+                    print "NO MOVES AVAILABLE"                    
                 for i in range(len(spotArray)):
                     rect = pygame.Rect(spotArray[i].x, spotArray[i].y, 120, 100)
                     if rect.collidepoint(event.pos):
