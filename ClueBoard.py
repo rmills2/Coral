@@ -45,7 +45,6 @@ class GameBoard:
         self.cardAreaCards = cardAreaCards
         self.player = player
         self.playerId = playerId
-        self.area = Area()
     
     def getCardAreaCards(self):
         return self.cardAreaCards
@@ -53,17 +52,18 @@ class GameBoard:
         return self.player
     def getPlayerId(self):
         return self.playerId
-    def drawGameBoard(self,display):
+    def drawGameBoard(self,display,roomFont):
         ############## Main Loop to create Rooms and Characters ##############
         y = 0
         arrayCount = 0
         colorCount = 0
+        characterCount = 0
         for i in range(5):
             x = 0
             for j in range(5):
                 rect = pygame.Rect(x * 10, y * 10, 120, 100)
                 if (i ==0 or i == 2 or i == 4) and (j == 0 or j == 2 or j == 4):
-                    self.area.draw(display,rect, TAN)
+                    Area.draw(display,rect, TAN)
                     currentImage = pygame.transform.scale(pygame.image.load('resources/images/' + images[arrayCount]), (120, 100)).convert_alpha()
                     display.blit(currentImage, (rect.x, rect.y))
                     display.blit(roomFont.render(roomArray[arrayCount], True, (255,255,255)), (rect.x + 10, rect.y + 75))
@@ -78,22 +78,23 @@ class GameBoard:
                     arrayCount+= 1
                 else:
                     hallway = []
-                    self.area.draw(display,rect, TAN)
+                    Area.draw(display,rect, TAN)
                     if i%2 == 1 and j%2 == 0:
                         hallway = Hallway(rect.x, rect.y, 1, [], True)
-                        hallway.draw()
+                        hallway.draw(display)
                         spotArray.append(hallway)
                     elif i%2 == 0 and j%2 == 1:
                         hallway = Hallway(rect.x, rect.y, 1, [], False)
-                        hallway.draw()
+                        hallway.draw(display)
                         spotArray.append(hallway)
-                if (j == 0 and i % 2 == 1) or (i == 4 and j % 2 == 1) or (j == 4 and i == 1) or (i == 0 and j == 1):
+                if (j == 0 and i % 2 == 1) or (i == 4 and j % 2 == 1) or (j == 4 and i == 1) or (i == 0 and j == 1) and characterCount < 3:
                     character = Character(characters[i], colorsArray[colorCount], areaAt(spotArray, rect.x, rect.y))
                     colorCount += 1
                     area = character.currentArea
                     area.currentOccupants.append(character)
                     characterArray.append(character)
-                    character.draw()
+                    character.draw(display,roomFont)
+                    characterCount += 1
                 x += 12
             y += 10
         ############## Associate Special Rooms ##################
@@ -115,7 +116,7 @@ class Character:
         return self.name
     def color(self):
         return self.color
-    def draw(self):
+    def draw(self,display,roomFont):
         scalex = 20
         scaley = 50
         area = self.currentArea
@@ -124,7 +125,7 @@ class Character:
         if isinstance(area, Room):
             areaColor = TAN
             rect = pygame.Rect(area.x, area.y, 120, 100)
-            Area.draw(rect, areaColor)
+            Area.draw(display,rect, areaColor)
             if isinstance (area, Room):    
                 display.blit(area.image, (rect.x, rect.y))               
                 display.blit(roomFont.render(area.name, True, (255,255,255)), (rect.x + 10, rect.y + 75))
@@ -138,12 +139,12 @@ class Character:
                     else:
                         scalex += 32
         else:
-            area.draw()
+            area.draw(display)
             pygame.draw.circle(display, self.color, (area.x + 60, area.y + 60), 15)
         
     def currentArea(self):
         return self.currentArea
-    def moveCharacter(self, newArea):
+    def moveCharacter(self, display,roomFont,newArea):
         currentArea = self.currentArea
         currentArea.currentOccupants.remove(self)
         self.currentArea = newArea
@@ -156,7 +157,7 @@ class Character:
             for i in range(len(currentArea.currentOccupants)):
                 char = currentArea.currentOccupants[i]
                 if char != self:
-                    char.draw()
+                    char.draw(display,roomtFont)
         else:
             pygame.draw.circle(display, color, (currentArea.x + 60, currentArea.y + 60), 15)
 
@@ -175,7 +176,8 @@ class Area:
     def currentOccupants(self):
         return self.currentOccupants
     
-    def draw(self,display,rect, color):
+    @staticmethod
+    def draw(display,rect, color):
         pygame.draw.rect(display, color, rect)
     
     def isAdjacent(self, spots, characterArea):
@@ -197,13 +199,13 @@ class Hallway(Area):
         self.vertical = vertical
     def vertical(self):
         return self.vertical
-    def draw(self):
+    def draw(self,display):
         if self.vertical == True:              
             rect = pygame.Rect(self.x + 30, self.y, 60, 100)
-            Area.draw(rect, BLACK)
+            Area.draw(display,rect, BLACK)
         else:
             rect = pygame.Rect(self.x, self.y + 30, 120, 50)
-            Area.draw(rect, BLACK)
+            Area.draw(display,rect, BLACK)
 
 class Room(Area):
     def __init__(self, x, y, maxOccupancy, currentOccupants, name, image):
@@ -289,11 +291,11 @@ class CluelessGamePlayer:
     def create_gameBoard(self):
         ############## Create the GameBoard #####################
         self.gameBoard = GameBoard(self.myCards, [], 1)
-        self.gameBoard.drawGameBoard(self.display)
+        self.gameBoard.drawGameBoard(self.display,self.roomFont)
     
     def draw_border(self):
         ############### Draw Border ###################
-        pygame.draw.rect(self.self.display, BLACK, (0, 0, 600, 500), 4)
+        pygame.draw.rect(self.display, BLACK, (0, 0, 600, 500), 4)
     
     def run(self):
         self.playerArea.players[self.turn].drawPlayerArrow(self.display, self.playerArea.players[self.turn].getColor(), False)
@@ -314,7 +316,7 @@ class CluelessGamePlayer:
                                    create_message("invalidMove")
                                    break
                                else:
-                                   currentCharacter.moveCharacter(spotArray[i])
+                                   currentCharacter.moveCharacter(self.display,self.roomFont,spotArray[i])
                                    
                                     ##### Update the player area
                                    previousPlayer = self.playerArea.players[self.turn % len(self.playerArea.players)]
@@ -332,23 +334,23 @@ class CluelessGamePlayer:
                                        previousPlayer.drawPlayerArrow(self.display, TAN, False)
                                        currentPlayer.drawPlayerArrow(self.display, currentPlayer.getColor(), False)
                                    if isinstance(spotArray[i], Room):
-                                       currentCharacter.draw()
+                                       currentCharacter.draw(self.display,self.roomFont)
                                        pygame.display.update()
                                        create_message("newSuggestion")
                                    else:
-                                       currentCharacter.draw()
+                                       currentCharacter.draw(self.display,self.roomFont)
                         yVal = 0
             
                         ##### Checks for scratch pad #####
-                        for i in range(len(entries)):
-                            r = entries[i].getRect()
+                        for i in range(len(self.entries)):
+                            r = self.entries[i].getRect()
                             if r.collidepoint(event.pos):
                                 if self.scratchPad.scratchColorsArray[i] == True:
                                     pygame.draw.line(self.display, RED, (r.x, r.y + 10), (r.x + 120, r.y + 10), 3)
                                     self.scratchPad.scratchColorsArray[i] = False
                                 else:
                                     self.scratchPad.redrawEntryArea(self.display, r)
-                                    self.scratchPad.blitText(entries[i].getName(), r, self.display)
+                                    self.scratchPad.blitText(self.entries[i].getName(), r, self.display)
                                     self.scratchPad.scratchColorsArray[i] = True
                             yVal += 20
                             
