@@ -303,9 +303,11 @@ while True:
         
         if event.type == pygame.MOUSEBUTTONUP:
             #if GameBoard.getPlayerId == client.turn:
-                if isAvailableMove(characterArray[turn % len(characterArray)]) == False:
+                """
+                if isAvailableMove(characterArray[turn % len(characterArray)],spotArray) == False:
                     # No available moves message -- increment turn
                     print "NO MOVES AVAILABLE"                    
+                """
                 for i in range(len(spotArray)):
                     rect = pygame.Rect(spotArray[i].x, spotArray[i].y, 120, 100)
                     if rect.collidepoint(event.pos):
