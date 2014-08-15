@@ -133,6 +133,7 @@ class Character:
         return self.name
     def color(self):
         return self.color
+    
     def draw(self):
         scalex = 20
         scaley = 50
@@ -161,7 +162,12 @@ class Character:
         
     def currentArea(self):
         return self.currentArea
+    
     def moveCharacter(self, newArea):
+        """ Moves the character from one area to another
+        
+        :param newArea - type Area -- new area to move character to
+        """
         currentArea = self.currentArea
         currentArea.currentOccupants.remove(self)
         self.currentArea = newArea
@@ -282,6 +288,9 @@ while True:
     for event in pygame.event.get():
         #if turn == youAre:
             #create_message("move")
+        
+        # Update a character's Area
+        
         if event.type == pygame.MOUSEBUTTONUP:
             #if GameBoard.getPlayerId == client.turn:
                 for i in range(len(spotArray)):
@@ -293,9 +302,9 @@ while True:
                            create_message("invalidMove")
                            break
                        else:
-                           currentCharacter.moveCharacter(spotArray[i])
+                           currentCharacter.moveCharacter(spotArray[i])     # Update Player's Area
                            
-                            ##### Update the player area
+                            ##### Update the Active Player 
                            previousPlayer = playerArea.players[turn % len(playerArea.players)]
                            if turn % len(playerArea.players) == 2:
                                previousPlayer.drawPlayerArrow(display, TAN, False)
@@ -303,13 +312,15 @@ while True:
                                previousPlayer.drawPlayerArrow(display, TAN, True)
                            turn += 1
                            currentPlayer = playerArea.players[turn % len(playerArea.players)]
-                
+                           
                            if turn % len(playerArea.players) > 2:
                                previousPlayer.drawPlayerArrow(display, TAN, True)
                                currentPlayer.drawPlayerArrow(display, currentPlayer.getColor(), True)
                            else:
                                previousPlayer.drawPlayerArrow(display, TAN, False)
                                currentPlayer.drawPlayerArrow(display, currentPlayer.getColor(), False)
+                            
+                            
                            if isinstance(spotArray[i], Room):
                                currentCharacter.draw()
                                pygame.display.update()
@@ -321,6 +332,7 @@ while True:
                                #create_message("accuse", cards)
                                print "Would you like to make an accusation?"
                                create_message("newSuggestion")
+                               
                            else:
                                currentCharacter.draw()
                 yVal = 0
