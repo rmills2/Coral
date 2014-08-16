@@ -54,3 +54,11 @@ class CardDeck:
                 requested_card = card
                 break
         return requested_card
+    
+    def find_card(self,name):
+        requested_card = ""
+        for card in self.cards:
+            if card.get_name().strip().lower() == name.strip().lower():
+                requested_card = card.get_name()
+                break
+        return requested_card

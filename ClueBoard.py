@@ -1,4 +1,6 @@
 import pygame, sys, math, subprocess
+from multiprocessing import Process
+import time
 from scratchpad import ScratchPad
 from client import *
 from Message import *
@@ -6,6 +8,8 @@ from players import *
 from cardAreaClass import *
 from pygame.locals import *
 import sys
+from PodSixNet.Connection import ConnectionListener, connection
+from CardDeck import CardDeck
 
 
 ############## Color Declarations ##############
@@ -87,7 +91,7 @@ class GameBoard:
                         hallway = Hallway(rect.x, rect.y, 1, [], False)
                         hallway.draw(display)
                         spotArray.append(hallway)
-                if (j == 0 and i % 2 == 1) or (i == 4 and j % 2 == 1) or (j == 4 and i == 1) or (i == 0 and j == 1) and characterCount < 3:
+                if ((j == 0 and i % 2 == 1) or (i == 4 and j % 2 == 1) or (j == 4 and i == 1) or (i == 0 and j == 1)) and characterCount < 3:
                     character = Character(characters[i], colorsArray[colorCount], areaAt(spotArray, rect.x, rect.y))
                     colorCount += 1
                     area = character.currentArea
@@ -157,7 +161,7 @@ class Character:
             for i in range(len(currentArea.currentOccupants)):
                 char = currentArea.currentOccupants[i]
                 if char != self:
-                    char.draw(display,roomtFont)
+                    char.draw(display,roomFont)
         else:
             pygame.draw.circle(display, color, (currentArea.x + 60, currentArea.y + 60), 15)
 
@@ -237,9 +241,10 @@ def isValidSecretPassage(areaToGo, characterArea):
         return True
     return False
 
-class CluelessGamePlayer:
+class CluelessGamePlayer(ConnectionListener):
     """ This class begins the gameplay by drawing the board """
-    def __init__(self,youAre,turn,myCards):
+    
+    def __init__(self,host="localhost",port=8080):
         
         self.display = None
         self.roomFont = None
@@ -250,16 +255,73 @@ class CluelessGamePlayer:
         self.cardArea = None
         self.gameBoard = None
         
-        self.turn = turn
-        self.youAre = youAre
-        self.myCards = myCards
+        self.turn = -1
+        self.youAre = 0
+        self.myCards = []
+        self.numplayers = 0
         
-        self.create_board()
-        self.create_scratchPad()
-        self.create_playerArea()
-        self.create_cardArea()
-        self.create_gameBoard()
-        self.draw_border()
+        self.game_process = None
+        self.running = False
+        self.need_initializing = False
+        self.gameid = None
+        self.Connect((host, int(port)))
+        self.card_deck = CardDeck()
+    
+    def Network(self, data):
+        #print 'network data:', data
+        pass
+    
+    def set_turn(self,turn):
+        self.turn = turn
+        #self.turn = 0
+    
+    def set_player_id(self,id):
+        self.youAre = id
+        #self.youAre = 0
+    
+    def set_player_cards(self,cards):
+        self.myCards = cards
+    
+    def Network_hello(self,data):
+        print "SERVER SAYS HELLO!"
+    
+    def Network_close(self, data):
+        sys.exit()
+    
+    def set_total_num_players(self,numplayers):
+        self.numplayers = numplayers
+    
+    def Network_startgame(self, data):
+        player_character = data['character']
+        player_cards = data['cards']
+        
+        player_id = data['youAre']
+        turn = data['turn']
+        numplayers = data['numplayers']
+        
+        self.set_turn(turn)
+        self.set_player_id(player_id)
+        self.set_total_num_players(numplayers)
+        self.set_player_cards(player_cards)
+        
+        success,cards = create_message("start")
+        
+        print "player_cards: ", player_cards
+        print "start success?: ", success
+        self.running = True
+        self.initialize_game_board()
+        if success:
+            connection.Send({"action":"success","ID":self.gameid})
+        else:
+            connection.Send({"action":"fail","ID":self.gameid})
+    
+    def Network_updateTurn(self,data):
+        """ This function is to update the player's server turn index """
+        self.turn = data['turn']
+    
+    def Network_endgame(self,data):
+        create_message("end")
+        sys.exit()
     
     def updateTurn(self,turn):
         self.turn = turn
@@ -297,77 +359,139 @@ class CluelessGamePlayer:
         ############### Draw Border ###################
         pygame.draw.rect(self.display, BLACK, (0, 0, 600, 500), 4)
     
+    def execute(self):
+        
+        self.game_process = Process(target=self.run)
+        self.game_process.start()
+    
+    def initialize_game_board(self):
+        
+        self.create_board()
+        self.create_scratchPad()
+        self.create_playerArea()
+        self.create_cardArea()
+        self.create_gameBoard()
+        self.draw_border()
+    
+    def Network_updateTurn(self,data):
+        turn = data['turn']
+        self.turn = turn
+    
+    def Network_movePlayer(self,data):
+        spotArrayIndex = data['spotArrayIndex']
+        self.update_player_position(spotArrayIndex)
+    
+    def update_player_position(self,spotArrayIndex):
+        print "Updating Player position!"
+        currentCharacter = characterArray[self.turn % len(characterArray)]
+        currentCharacter.moveCharacter(self.display,self.roomFont,spotArray[spotArrayIndex])
+        ##### Update the player area
+        previousPlayer = self.playerArea.players[self.turn % len(self.playerArea.players)]
+        if self.turn % len(self.playerArea.players) == 2:
+            previousPlayer.drawPlayerArrow(self.display, TAN, False)
+        elif self.turn % len(self.playerArea.players) == 5:
+            previousPlayer.drawPlayerArrow(self.display, TAN, True)
+        
+        self.turn  = self.turn+1 if self.turn < self.numplayers-1 else 0
+        
+        currentPlayer = self.playerArea.players[self.turn % len(self.playerArea.players)]
+        
+        if self.turn % len(self.playerArea.players) > 2:
+            previousPlayer.drawPlayerArrow(self.display, TAN, True)
+            currentPlayer.drawPlayerArrow(self.display, currentPlayer.getColor(), True)
+        else:
+            previousPlayer.drawPlayerArrow(self.display, TAN, False)
+            currentPlayer.drawPlayerArrow(self.display, currentPlayer.getColor(), False)
+        
+        currentCharacter.draw(self.display,self.roomFont)
+        pygame.display.update()
+    
+    def notify_move(self,spotArrayIndex):
+        connection.Send({"action":"playerMove","spotArrayIndex":spotArrayIndex,"playerId":self.youAre})
+    
+    def notify_suggestion(self,cards):
+        connection.Send({"action":"newSuggestion","cards":cards,"playerId":self.youAre})
+    
+    def Network_newSuggestion(self,data):
+        cards = data['cards']
+        card_names = cards.values()
+        card_name_text = ",".join(card_names)
+        print "card_name_text: ", card_name_text
+        create_message("accuse",card_name_text)
+    
     def run(self):
+        
+        if not self.running:
+            return
+        
         self.playerArea.players[self.turn].drawPlayerArrow(self.display, self.playerArea.players[self.turn].getColor(), False)
         self.playerArea.players[self.youAre].drawBox(self.display)
-        
-        while True:
-            for event in pygame.event.get():
-                #if self.turn == self.youAre:
-                    #create_message("move")
-                if event.type == pygame.MOUSEBUTTONUP:
-                    #if GameBoard.getPlayerId == client.self.turn:
-                        for i in range(len(spotArray)):
-                            rect = pygame.Rect(spotArray[i].x, spotArray[i].y, 120, 100)
-                            if rect.collidepoint(event.pos):
-                               currentCharacter = characterArray[self.turn % len(characterArray)]
-                               characterRect = pygame.Rect(currentCharacter.currentArea.x, currentCharacter.currentArea.y, 120, 100)
-                               if isValidSecretPassage(spotArray[i], currentCharacter.currentArea) == False and spotArray[i].isAdjacent(spotArray, currentCharacter.currentArea) == False or spotArray[i].maxOccupancy - len(spotArray[i].currentOccupants) <= 0:
-                                   create_message("invalidMove")
-                                   break
-                               else:
-                                   currentCharacter.moveCharacter(self.display,self.roomFont,spotArray[i])
-                                   
-                                    ##### Update the player area
-                                   previousPlayer = self.playerArea.players[self.turn % len(self.playerArea.players)]
-                                   if self.turn % len(self.playerArea.players) == 2:
-                                       previousPlayer.drawPlayerArrow(self.display, TAN, False)
-                                   elif self.turn % len(self.playerArea.players) == 5:
-                                       previousPlayer.drawPlayerArrow(self.display, TAN, True)
-                                   self.turn += 1
-                                   currentPlayer = self.playerArea.players[self.turn % len(self.playerArea.players)]
-                        
-                                   if self.turn % len(self.playerArea.players) > 2:
-                                       previousPlayer.drawPlayerArrow(self.display, TAN, True)
-                                       currentPlayer.drawPlayerArrow(self.display, currentPlayer.getColor(), True)
-                                   else:
-                                       previousPlayer.drawPlayerArrow(self.display, TAN, False)
-                                       currentPlayer.drawPlayerArrow(self.display, currentPlayer.getColor(), False)
-                                   if isinstance(spotArray[i], Room):
-                                       currentCharacter.draw(self.display,self.roomFont)
-                                       pygame.display.update()
-                                       create_message("newSuggestion")
-                                   else:
-                                       currentCharacter.draw(self.display,self.roomFont)
-                        yVal = 0
+    
+        for event in pygame.event.get():
+            #if self.turn == self.youAre:
+                #create_message("move")
+            if event.type == pygame.MOUSEBUTTONUP and self.turn == self.youAre:
+                
+                # MOVE A PLAYER
+                for i in range(len(spotArray)):
+                    rect = pygame.Rect(spotArray[i].x, spotArray[i].y, 120, 100)
+                    if rect.collidepoint(event.pos):
+                       currentCharacter = characterArray[self.turn % len(characterArray)]
+                       characterRect = pygame.Rect(currentCharacter.currentArea.x, currentCharacter.currentArea.y, 120, 100)
+                       if isValidSecretPassage(spotArray[i], currentCharacter.currentArea) == False and spotArray[i].isAdjacent(spotArray, currentCharacter.currentArea) == False or spotArray[i].maxOccupancy - len(spotArray[i].currentOccupants) <= 0:
+                           create_message("invalidMove")
+                           break
+                       else:
+                           self.update_player_position(i)
+                           if isinstance(spotArray[i], Room):
+                               currentCharacter.draw(self.display,self.roomFont)
+                               pygame.display.update()
+                               success, cards = create_message("newSuggestion")
+                               print "SUCCESS: ", success
+                               print "CARDS: ", cards
+                               self.notify_suggestion(cards)
+                               
+                           self.notify_move(i)
+                
+                ##### Checks for making the final accusation #####
+                rect = pygame.Rect(770, 460, 130, 40)
+                if rect.collidepoint(event.pos):
+                    print "MAKING FINAL ACCUSATION"
+                    cards="Wrench,Prof. Plum,Kitchen"
+                    #create_message("accuse", cards)#
+                    create_message("newSuggestion")
             
-                        ##### Checks for scratch pad #####
-                        for i in range(len(self.entries)):
-                            r = self.entries[i].getRect()
-                            if r.collidepoint(event.pos):
-                                if self.scratchPad.scratchColorsArray[i] == True:
-                                    pygame.draw.line(self.display, RED, (r.x, r.y + 10), (r.x + 120, r.y + 10), 3)
-                                    self.scratchPad.scratchColorsArray[i] = False
-                                else:
-                                    self.scratchPad.redrawEntryArea(self.display, r)
-                                    self.scratchPad.blitText(self.entries[i].getName(), r, self.display)
-                                    self.scratchPad.scratchColorsArray[i] = True
-                            yVal += 20
-                            
-                        ##### Checks for making the final accusation #####
-                        rect = pygame.Rect(770, 460, 130, 40)
-                        if rect.collidepoint(event.pos):
-                            print "MAKING FINAL ACCUSATION"
-                            cards="Wrench,Prof. Plum,Kitchen"
-                            #create_message("accuse", cards)#
-                            create_message("newSuggestion")
-                if event.type == QUIT:
-                    pygame.quit()
-                    sys.exit()
-                    
-            pygame.display.update()
+            # UPDATE SCRATCH PAD
+            if event.type == pygame.MOUSEBUTTONUP:
+                yVal = 0
+                ##### Checks for scratch pad #####
+                for i in range(len(self.entries)):
+                    r = self.entries[i].getRect()
+                    if r.collidepoint(event.pos):
+                        if self.scratchPad.scratchColorsArray[i] == True:
+                            pygame.draw.line(self.display, RED, (r.x, r.y + 10), (r.x + 120, r.y + 10), 3)
+                            self.scratchPad.scratchColorsArray[i] = False
+                        else:
+                            self.scratchPad.redrawEntryArea(self.display, r)
+                            self.scratchPad.blitText(self.entries[i].getName(), r, self.display)
+                            self.scratchPad.scratchColorsArray[i] = True
+                    yVal += 20
+            
+            if event.type == QUIT:
+                pygame.quit()
+                sys.exit()
+                
+        pygame.display.update()
+
+def run_forever(gameplayer):
+    gameplayer.run()
 
 if __name__ == "__main__":
-    gameplayer = CluelessGamePlayer(0,0,['Wrench', 'Prof. Plum', 'Col. Mustard', 'Mrs. White'])
-    gameplayer.run()
+    import time
+    gameplayer = CluelessGamePlayer()
+    while True:
+        gameplayer.Pump()
+        connection.Pump()
+        gameplayer.run()
+        time.sleep(0.001)
 
