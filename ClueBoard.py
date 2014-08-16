@@ -433,7 +433,6 @@ class CluelessGamePlayer(ConnectionListener):
             if event.type == pygame.MOUSEBUTTONUP and self.turn == self.youAre:
                 
                 # MOVE A PLAYER
->>>>>>> master_gameplay
                 for i in range(len(spotArray)):
                     rect = pygame.Rect(spotArray[i].x, spotArray[i].y, 120, 100)
                     if rect.collidepoint(event.pos):
@@ -443,60 +442,10 @@ class CluelessGamePlayer(ConnectionListener):
                            create_message("invalidMove")
                            break
                        else:
-<<<<<<< HEAD
-                           currentCharacter.moveCharacter(spotArray[i])     # Update Player's Area
-                           
-                            ##### Update the Active Player 
-                           previousPlayer = playerArea.players[turn % len(playerArea.players)]
-                           if turn % len(playerArea.players) == 2:
-                               previousPlayer.drawPlayerArrow(display, TAN, False)
-                           elif turn % len(playerArea.players) == 5:
-                               previousPlayer.drawPlayerArrow(display, TAN, True)
-                           turn += 1
-                           currentPlayer = playerArea.players[turn % len(playerArea.players)]
-                           
-                           if turn % len(playerArea.players) > 2:
-                               previousPlayer.drawPlayerArrow(display, TAN, True)
-                               currentPlayer.drawPlayerArrow(display, currentPlayer.getColor(), True)
-                           else:
-                               previousPlayer.drawPlayerArrow(display, TAN, False)
-                               currentPlayer.drawPlayerArrow(display, currentPlayer.getColor(), False)
-                            
-                            
-=======
                            self.update_player_position(i)
->>>>>>> master_gameplay
                            if isinstance(spotArray[i], Room):
                                currentCharacter.draw(self.display,self.roomFont)
                                pygame.display.update()
-<<<<<<< HEAD
-                               ### This would be a prompt instead
-                               ## for Player in Players
-                               ## if Player == "PlayerFromCard"
-                               ## draw player at spot as well to move them there
-                               cards="Dagger,Prof. Plum,Lounge"
-                               #create_message("accuse", cards)
-                               print "Would you like to make an accusation?"
-                               create_message("newSuggestion")
-                               
-                           else:
-                               currentCharacter.draw()
-                yVal = 0
-    
-                ##### Checks for scratch pad #####
-                for i in range(len(entries)):
-                    r = entries[i].getRect()
-                    if r.collidepoint(event.pos):
-                        if scratchPad.scratchColorsArray[i] == True:
-                            pygame.draw.line(display, RED, (r.x, r.y + 10), (r.x + 120, r.y + 10), 3)
-                            scratchPad.scratchColorsArray[i] = False
-                        else:
-                            scratchPad.redrawEntryArea(display, r)
-                            scratchPad.blitText(entries[i].getName(), r, display)
-                            scratchPad.scratchColorsArray[i] = True
-                    yVal += 20
-
-=======
                                success, cards = create_message("newSuggestion")
                                print "SUCCESS: ", success
                                print "CARDS: ", cards
@@ -504,7 +453,6 @@ class CluelessGamePlayer(ConnectionListener):
                                
                            self.notify_move(i)
                 
->>>>>>> master_gameplay
                 ##### Checks for making the final accusation #####
                 rect = pygame.Rect(770, 460, 130, 40)
                 if rect.collidepoint(event.pos):
