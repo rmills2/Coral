@@ -1,11 +1,35 @@
 from PodSixNet.Connection import ConnectionListener, connection
 import Message,time
-import jsonpickle
 from cardAreaClass import cardArea
 
 import sys
 
 class ClueLessClient(ConnectionListener):
+    
+    
+    ############## Color Declarations ##############
+    WHITE = (255, 255, 255)
+    BLACK = (0, 0, 0)
+    BLUE = (0, 0, 255)
+    GREEN = (0, 255, 0)
+    RED = (255, 0, 0)
+    YELLOW = (255, 255, 0)
+    PURPLE = (255, 0, 255)
+    TAN= (247, 231, 160)
+    
+    
+    ############## Create global arrays ###############
+    
+    images = ['study.png', 'hall.png', 'lounge.png', 'library.png', 'billiardRoom.png', 'diningRoom.png', 'conservatory.png', 'ballroom.png', 'kitchen.png']
+    roomArray = ['Study','Hall','Lounge','Library','Billiard Room','Dining Room','Conservatory','Ballroom','Kitchen']
+    characters = ['Player1', 'Player2', 'Player3', '4', '5']
+    colorsArray = [GREEN, RED, BLUE, PURPLE, WHITE, YELLOW]
+    
+    x = 0
+    characterArray = []
+    spotArray = []
+    specialRooms = []
+    color = BLACK
     
     def __init__(self,host,port):
         self.gameid = None
@@ -23,16 +47,12 @@ class ClueLessClient(ConnectionListener):
         sys.exit()
     
     def Network_startgame(self, data):
-        global ClueBoard
         player_character = data['character']
         player_cards = data['cards']
         success,cards = Message.create_message("start")
         print "player_cards: ", player_cards
         print "start success?: ", success
         if success:
-            print "sys.argv BEFORE: ", sys.argv
-            sys.argv.append(",".join(player_cards))
-            import ClueBoard
             connection.Send({"action":"success","ID":self.gameid})
         else:
             connection.Send({"action":"fail","ID":self.gameid})
@@ -50,6 +70,8 @@ class ClueLessClient(ConnectionListener):
     def Network_endgame(self,data):
         Message.create_message("end")
         sys.exit()
+
+
 
 
 if __name__ == "__main__":

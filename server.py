@@ -3,6 +3,7 @@ import PodSixNet.Server
 import Message, random
 from CardDeck import CardDeck
 import jsonpickle, sys
+import random
 
 from time import sleep
 
@@ -43,27 +44,71 @@ class ClientChannel(PodSixNet.Channel.Channel):
     def Network_fail(self,data):
         print "CLIENT {0} RESPONSES WITH FAILURE!".format(data['ID'])
     
+    def Network_playerMove(self,data):
+        print "Updating PlayerMove from ClientChannel!"
+        spotArrayIndex = data['spotArrayIndex']
+        playerId = data['playerId']
+        self._server.update_playerMove(spotArrayIndex,playerId)
+    
+    def Network_newSuggestion(self,data):
+        self._server.make_suggestion(data)
     
     def Close(self):
         self._server.close(self.gameid)
 
-
-class ClueLessServer(PodSixNet.Server.Server):
+class ClueLessGame:
+    def __init__(self):
+        """
+        The game logic class
+        
+        :param playerChannel - player channel
+        :param currentIndex - current index of the player
+        """
+        
+    
+    
+        
+class ClueLessServer(PodSixNet.Server.Server,ClueLessGame):
  
     channelClass = ClientChannel
     
     def __init__(self, *args, **kwargs):
         PodSixNet.Server.Server.__init__(self, *args, **kwargs)
-        self.queue = ClueLessGame()
         self.currentIndex=-1
         print "STARTING UP THE SERVER"
+        
+        self.card_deck = CardDeck()
+        
+        self.confidential_card_types = ['character','weapon','room']
+        self.confidential_file = []
+        
+        self.minPlayers = 3         #  Minimum number of players to play the game
+        self.active_turn = 0
+        self.disprove_turn = 0
+        self.playerChannels = []
+        
+        self.select_confidential_cards()
+    
+    def make_suggestion(self,data):
+        """ Notify all users of all the suggestion """
+        cards = data['cards']
+        playerId = data['playerId']
+        
+        self.broadcast_suggestion(cards,playerId)
+    
+    def broadcast_suggestion(self,cards,playerId):
+        for x in xrange(len(self.playerChannels)):
+            if x == playerId: continue
+            
+            player = self.playerChannels[x]
+            player.Send({"action":"newSuggestion","cards":cards})
     
     def Connected(self, channel, addr):
         self.currentIndex+=1
         print "new connection index for player: ", self.currentIndex
         channel.gameid=self.currentIndex
         channel.Send({"action":"setId","ID":self.currentIndex})
-        self.queue.add_player(channel)
+        self.add_player(channel)
     
     def close(self, gameid):
         try:
@@ -76,33 +121,6 @@ class ClueLessServer(PodSixNet.Server.Server):
         # Check for any wins
         # Loop through all of the squares
         self.Pump()
-
-class ExamplePlayer:
-    """ This Player class is just an example class to mimic the Player class that Xu needs to work on """
-    def __init__(self):
-        
-        card_deck = CardDeck()
-        self.char_name = card_deck.get_random_card("character")
-    
-class ClueLessGame:
-    def __init__(self):
-        """
-        The game logic class
-        
-        :param playerChannel - player channel
-        :param currentIndex - current index of the player
-        """
-        self.card_deck = CardDeck()
-        
-        self.confidential_card_types = ['character','weapon','room']
-        self.confidential_file = []
-        
-        self.minPlayers = 3         #  Minimum number of players to play the game
-        self.active_turn = 0
-        self.disprove_turn = 0
-        self.playerChannels = []
-        
-        self.select_confidential_cards()
     
     def select_confidential_cards(self):
         """ This function selects cards from the confidential file"""
@@ -119,12 +137,12 @@ class ClueLessGame:
         print "STARTING GAME FROM SERVER!"
         
         assigned_characters,assigned_cards = self.distribute_cards()
-        
+        self.active_turn = random.choice(xrange(len(self.playerChannels)))
         for x in xrange(len(self.playerChannels)):
             player = self.playerChannels[x]
             player_character = assigned_characters[x].get_name()
             player_cards = [card.get_name() for card in assigned_cards[x]]
-            player.Send({"action":"startgame","character":player_character,"cards":player_cards})
+            player.Send({"action":"startgame","youAre":x,"turn":self.active_turn,"character":player_character,"cards":player_cards,'numplayers':len(self.playerChannels)})
     
     def distribute_cards(self):
         """ This function iterates through the card deck, randomly assigns players a character, and the rest of cards in the deck """
@@ -151,9 +169,30 @@ class ClueLessGame:
         
         return assigned_chars,assigned_cards
     
+    
+    def increment_active_turn(self):
+        self.active_turn = self.active_turn+1 if self.active_turn < len(self.playerChannels)-1 else 0
+    
+    def updateTurn(self):
+        self.increment_active_turn()
+        
+        for x in xrange(len(self.playerChannels)):
+            player = self.playerChannels[x]
+            player.Send({"action":"updateTurn","turn":self.active_turn})
+    
     def endGame(self):
         for player in self.playerChannels:
             player.Send({"action":"endGame"})
+    
+    def update_playerMove(self,spotArrayIndex,playerId):
+        
+        for x in xrange(len(self.playerChannels)):
+            if x == playerId: continue  # skip the previous active players update
+            
+            player = self.playerChannels[x]
+            player.Send({"action":"movePlayer","spotArrayIndex":spotArrayIndex})
+        
+        self.updateTurn()
 
 
 if __name__ == "__main__":
