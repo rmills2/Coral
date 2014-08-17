@@ -221,6 +221,8 @@ class ClueLessServer(PodSixNet.Server.Server,ClueLessGame):
             player = self.playerChannels[x]
             player_character = assigned_characters[x].get_name()
             player_cards = [card.get_name() for card in assigned_cards[x]]
+            print "player: ", x
+            print "has cards: ", player_cards
             player.Send({"action":"startgame","youAre":x,"turn":self.active_turn,"character":player_character,"cards":player_cards,'numplayers':len(self.playerChannels)})
     
     def distribute_cards(self):
@@ -232,16 +234,20 @@ class ClueLessServer(PodSixNet.Server.Server,ClueLessGame):
             player = self.playerChannels[x]
             char_card = self.card_deck.get_random_card("character",card_tracker)
             
-            card_tracker.append(char_card)
+            #card_tracker.append(char_card)
             assigned_chars.append(char_card)
         
+        print "card_tracker: ", card_tracker
+        print "confidential file: ", self.confidential_file
         x = 0
         while len(card_tracker) < self.card_deck.length():
             
             card = self.card_deck.get_random_card(None,card_tracker)
+            if card.get_name() in card_tracker: continue
+            
             x = x+1 if x < len(assigned_cards)-1 else 0
             assigned_cards[x].append(card)
-            card_tracker.append(card)
+            card_tracker.append(card.get_name())
         
         print "final assigned_chars: ", assigned_chars
         print "final assigned_cards: ", assigned_cards
