@@ -134,16 +134,16 @@ class ClueLessServer(PodSixNet.Server.Server,ClueLessGame):
         spotArrayIndex = data['spotArrayIndex']
         
         self.broadcast_suggestion(cards,playerId)
-        self.move_accused_player(cards,spotArrayIndex)
         self.force_disproval(cards,playerId)
-    
+        #self.move_accused_player(cards,spotArrayIndex)
+        
     def move_accused_player(self,cards,spotArrayIndex):
-        cards = cards.split(",")
+        cards = cards.values()
         print "accused cards: ", cards
         if len(set(cards).intersection(set(self.character_index_names.values()))) > 0:
-            char_card = set(cards).intersection(set(self.character_index_names.values()))
+            char_card = list(set(cards).intersection(set(self.character_index_names.values())))[0]
             player_index = self.character_indexes[char_card]
-            player = self.playerChannels[x]
+            player = self.playerChannels[player_index]
             player.Send({"action":"movePlayer","spotArrayIndex":spotArrayIndex})
     
     def disproved(self,data):
