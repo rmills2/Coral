@@ -21,7 +21,7 @@ class Card:
 class CardDeck:
     
     all_card_info = ([('Dagger', 'weapon'), ('Rope', 'weapon'), ('Lead Pipe', 'weapon'), ('Candlestick', 'weapon'), ('Revolver', 'weapon'), ('Wrench', 'weapon'),
-                 ('Col. Mustard', 'character'), ('Prof. Plum', 'character'), ('Miss. Scarlett', 'character'), ('Mr. Green', 'character'), ('Mrs. Peacock', 'character'), ('Mrs. White', 'character'),
+                 ('Col. Mustard', 'character'), ('Prof. Plum', 'character'), ('Miss Scarlett', 'character'), ('Mr. Green', 'character'), ('Mrs. Peacock', 'character'), ('Mrs. White', 'character'),
                  ('Kitchen', 'room'), ('Dining Room', 'room'), ('Lounge', 'room'), ('Hall', 'room'), ('Study', 'room'), ('Library', 'room'), ('Billiard Room', 'room'), ('Conservatory', 'room'), ('Ballroom', 'room')
                  ])
     

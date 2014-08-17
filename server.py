@@ -89,7 +89,7 @@ class ClueLessServer(PodSixNet.Server.Server,ClueLessGame):
         self.confidential_card_types = ['character','weapon','room']
         self.confidential_file = []
         
-        self.character_index_names = {0:"Mr. Green",1:"Miss. Scarlett",2:"Mrs. Peacock"}
+        self.character_index_names = {0:"Mr. Green",1:"Miss Scarlett",2:"Mrs. Peacock"}
         self.character_indexes = dict((y,x) for x,y in self.character_index_names.iteritems())
         
         self.minPlayers = 3         #  Minimum number of players to play the game
@@ -217,8 +217,15 @@ class ClueLessServer(PodSixNet.Server.Server,ClueLessGame):
     
     def select_confidential_cards(self):
         """ This function selects cards from the confidential file"""
+        """
         for cardtype in self.confidential_card_types:
             self.confidential_file.append(self.card_deck.get_random_card(cardtype).get_name())
+        """
+        for cardname in ['Miss Scarlett','Ballroom','Revolver']:
+            card = self.card_deck.get_card(cardname)
+            self.confidential_file.append(card.get_name())
+        
+
         print "FINAL CONFIDENTIAL FILE CARDS: ", self.confidential_file
         
     def add_player(self,playerChannel):
@@ -231,7 +238,8 @@ class ClueLessServer(PodSixNet.Server.Server,ClueLessGame):
         print "STARTING GAME FROM SERVER!"
         
         assigned_characters,assigned_cards = self.distribute_cards()
-        self.active_turn = random.choice(xrange(len(self.playerChannels)))
+        #self.active_turn = random.choice(xrange(len(self.playerChannels)))
+        self.active_turn = 0
         for x in xrange(len(self.playerChannels)):
             player = self.playerChannels[x]
             player_character = assigned_characters[x].get_name()
@@ -255,15 +263,20 @@ class ClueLessServer(PodSixNet.Server.Server,ClueLessGame):
         
         print "card_tracker: ", card_tracker
         print "confidential file: ", self.confidential_file
-        x = 0
-        while len(card_tracker) < self.card_deck.length():
+        
+        assigned_card_names= ([["Prof. Plum","Kitchen","Library","Wrench","Lead Pipe","Dagger"],
+                               ["Mr. Green","Mrs. White"," Rope","Conservatory","Lounge","Hall"],
+                               ["Mrs. Peacock","Col. Mustard","Dagger","Candlestick","Dining Room","Billiard Room"]
+                               ])
+        for x in xrange(len(assigned_card_names)):
             
-            card = self.card_deck.get_random_card(None,card_tracker)
-            if card.get_name() in card_tracker: continue
-            
-            x = x+1 if x < len(assigned_cards)-1 else 0
-            assigned_cards[x].append(card)
-            card_tracker.append(card.get_name())
+            allcards = []
+            for cardname in assigned_card_names[x]:
+                card = self.card_deck.get_card(cardname)
+                if not card:
+                    print "ERROR COULD NOT FIND: ", cardname
+                allcards.append(card)
+            assigned_cards[x] = allcards
         
         print "final assigned_chars: ", assigned_chars
         print "final assigned_cards: ", assigned_cards
