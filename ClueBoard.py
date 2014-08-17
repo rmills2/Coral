@@ -422,9 +422,10 @@ class CluelessGamePlayer(ConnectionListener):
         connection.Send({"action":"playerMove","spotArrayIndex":spotArrayIndex,"playerId":self.youAre})
         self.need_to_notify = False
     
-    def notify_suggestion(self,cards):
+    def notify_suggestion(self,cards,spotArrayIndex):
         print "Notifying new suggestion: ", cards
-        connection.Send({"action":"newSuggestion","cards":cards,"playerId":self.youAre})
+        print "WITH SPOT ARRAY INDEX: ", spotArrayIndex
+        connection.Send({"action":"newSuggestion","cards":cards,"playerId":self.youAre,"spotArrayIndex":spotArrayIndex})
     
     def notify_finalaccusation(self,cards):
         connection.Send({"action":"finalAccusation","cards":cards,"playerId":self.youAre})
@@ -497,7 +498,7 @@ class CluelessGamePlayer(ConnectionListener):
                                print "CARDS: ", cards
                                if success and cards:
                                    suggestionMade = True
-                                   self.notify_suggestion(cards)
+                                   self.notify_suggestion(cards,i)
                                    self.need_to_notify = False
                                else:
                                    self.need_to_notify = True

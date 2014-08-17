@@ -89,6 +89,9 @@ class ClueLessServer(PodSixNet.Server.Server,ClueLessGame):
         self.confidential_card_types = ['character','weapon','room']
         self.confidential_file = []
         
+        self.character_index_names = {0:"Mr. Green",1:"Miss. Scarlett",2:"Mrs. Peacock"}
+        self.character_indexes = dict((y,x) for x,y in self.character_index_names.iteritems())
+        
         self.minPlayers = 3         #  Minimum number of players to play the game
         self.active_turn = 0
         self.disprove_turn = 0
@@ -125,11 +128,23 @@ class ClueLessServer(PodSixNet.Server.Server,ClueLessGame):
         
     def make_suggestion(self,data):
         """ Notify all users of all the suggestion """
+        print "MAKING SUGGESTION ON SERVER WITH DATA: ", data
         cards = data['cards']
         playerId = data['playerId']
+        spotArrayIndex = data['spotArrayIndex']
         
         self.broadcast_suggestion(cards,playerId)
+        self.move_accused_player(cards,spotArrayIndex)
         self.force_disproval(cards,playerId)
+    
+    def move_accused_player(self,cards,spotArrayIndex):
+        cards = cards.split(",")
+        print "accused cards: ", cards
+        if len(set(cards).intersection(set(self.character_index_names.values()))) > 0:
+            char_card = set(cards).intersection(set(self.character_index_names.values()))
+            player_index = self.character_indexes[char_card]
+            player = self.playerChannels[x]
+            player.Send({"action":"movePlayer","spotArrayIndex":spotArrayIndex})
     
     def disproved(self,data):
         cards = data['cards']
@@ -232,10 +247,11 @@ class ClueLessServer(PodSixNet.Server.Server,ClueLessGame):
         assigned_cards = [[] for x in xrange(len(self.playerChannels))]    # Assigned cards for each player
         for x in xrange(len(self.playerChannels)):
             player = self.playerChannels[x]
-            char_card = self.card_deck.get_random_card("character",card_tracker)
-            
+            #char_card = self.card_deck.get_random_card("character",card_tracker)
+            char_card = self.card_deck.get_card(self.character_index_names[x])
             #card_tracker.append(char_card)
             assigned_chars.append(char_card)
+            print "player: ", x, "is: ", char_card.get_name() 
         
         print "card_tracker: ", card_tracker
         print "confidential file: ", self.confidential_file
