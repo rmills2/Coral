@@ -22,11 +22,12 @@ class CardDeck:
     
     all_card_info = ([('Dagger', 'weapon'), ('Rope', 'weapon'), ('Lead Pipe', 'weapon'), ('Candlestick', 'weapon'), ('Revolver', 'weapon'), ('Wrench', 'weapon'),
                  ('Col. Mustard', 'character'), ('Prof. Plum', 'character'), ('Miss. Scarlett', 'character'), ('Mr. Green', 'character'), ('Mrs. Peacock', 'character'), ('Mrs. White', 'character'),
-                 ('Kitchen', 'room'), ('Dining Room', 'room'), ('Lounge', 'room'), ('Hall', 'room'), ('Study', 'room'), ('Library', 'room'), ('Billard Room', 'room'), ('Conservatory', 'room'), ('Ball Room', 'room')
+                 ('Kitchen', 'room'), ('Dining Room', 'room'), ('Lounge', 'room'), ('Hall', 'room'), ('Study', 'room'), ('Library', 'room'), ('Billiard Room', 'room'), ('Conservatory', 'room'), ('Ballroom', 'room')
                  ])
     
     def __init__(self):
         self.cards = [Card(card_info[0],card_info[1]) for card_info in self.all_card_info]
+        self.null_card = Card("None","none")
     
     def get_random_card(self,cardtype=None,ignore=[]):
         notFound = True
@@ -53,6 +54,7 @@ class CardDeck:
             if card.get_name().strip().lower() == name.strip().lower():
                 requested_card = card
                 break
+        
         return requested_card
     
     def find_card(self,name):

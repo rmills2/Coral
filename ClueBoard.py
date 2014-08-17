@@ -266,7 +266,11 @@ class CluelessGamePlayer(ConnectionListener):
         self.gameid = None
         self.Connect((host, int(port)))
         self.card_deck = CardDeck()
-    
+        self.suggestionDisproved = []
+        
+        self.need_to_notify = False
+        self.newPosition = 0
+        
     def Network(self, data):
         #print 'network data:', data
         pass
@@ -321,6 +325,14 @@ class CluelessGamePlayer(ConnectionListener):
     
     def Network_endgame(self,data):
         create_message("end")
+        sys.exit()
+    
+    def Network_winner(self,data):
+        create_message("win")
+        sys.exit()
+    
+    def Network_loser(self,data):
+        create_message("lose")
         sys.exit()
     
     def updateTurn(self,turn):
@@ -408,9 +420,14 @@ class CluelessGamePlayer(ConnectionListener):
     
     def notify_move(self,spotArrayIndex):
         connection.Send({"action":"playerMove","spotArrayIndex":spotArrayIndex,"playerId":self.youAre})
+        self.need_to_notify = False
     
     def notify_suggestion(self,cards):
+        print "Notifying new suggestion: ", cards
         connection.Send({"action":"newSuggestion","cards":cards,"playerId":self.youAre})
+    
+    def notify_finalaccusation(self,cards):
+        connection.Send({"action":"finalAccusation","cards":cards,"playerId":self.youAre})
     
     def Network_newSuggestion(self,data):
         cards = data['cards']
@@ -419,10 +436,38 @@ class CluelessGamePlayer(ConnectionListener):
         print "card_name_text: ", card_name_text
         create_message("accuse",card_name_text)
     
+    def Network_forceDisproval(self,data):
+        print "FORCING DISPROVAL WITH SUGGESTION CARDS: ", data['cards']
+        cards = data['cards']
+        card_names = cards.values()
+        card_name_text = ",".join(card_names)
+        print "card_name_text: ", card_name_text
+        success, disproved_cards = create_message("mustDisprove",card_name_text,self.myCards)
+        print "success: ", success
+        print "disproved cards: ", disproved_cards
+        if disproved_cards:
+            connection.Send({"action":"disproved","cards":disproved_cards})
+        else:
+            connection.Send({"action":"disproved","cards":False})
+    
+    def Network_isDisproved(self,data):
+        card_names = data['cards']
+        card_name_text = ",".join(card_names)
+        print "card_name_text: ", card_name_text
+        create_message("disprove",card_name_text)
+        self.notify_move(self.newPosition)
+    
+    def Network_notDisproved(self,data):
+        create_message("notdisproved")
+        self.notify_move(self.newPosition)
+    
     def run(self):
         
         if not self.running:
             return
+        
+        if self.need_to_notify:
+            self.notify_move(self.newPosition)
         
         self.playerArea.players[self.turn].drawPlayerArrow(self.display, self.playerArea.players[self.turn].getColor(), False)
         self.playerArea.players[self.youAre].drawBox(self.display)
@@ -442,24 +487,31 @@ class CluelessGamePlayer(ConnectionListener):
                            create_message("invalidMove")
                            break
                        else:
-                           self.update_player_position(i)
+                           suggestionMade = False
+                           #self.update_player_position(i)
                            if isinstance(spotArray[i], Room):
                                currentCharacter.draw(self.display,self.roomFont)
                                pygame.display.update()
-                               success, cards = create_message("newSuggestion")
+                               success, cards = create_message("newSuggestion",spotArray[i].name)
                                print "SUCCESS: ", success
                                print "CARDS: ", cards
-                               self.notify_suggestion(cards)
-                               
-                           self.notify_move(i)
+                               if success and cards:
+                                   suggestionMade = True
+                                   self.notify_suggestion(cards)
+                                   self.need_to_notify = False
+                               else:
+                                   self.need_to_notify = True
+                           else:
+                                self.need_to_notify = True
+                           self.newPosition = i
                 
                 ##### Checks for making the final accusation #####
                 rect = pygame.Rect(770, 460, 130, 40)
                 if rect.collidepoint(event.pos):
                     print "MAKING FINAL ACCUSATION"
-                    cards="Wrench,Prof. Plum,Kitchen"
-                    #create_message("accuse", cards)#
-                    create_message("newSuggestion")
+                    success, cards = create_message("newSuggestion","None")
+                    if success and cards:
+                        self.notify_finalaccusation(cards)
             
             # UPDATE SCRATCH PAD
             if event.type == pygame.MOUSEBUTTONUP:

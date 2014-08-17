@@ -317,7 +317,7 @@ class Message:
     WIN_MESSAGE = "Congratulations, you have won the game!"
     LOSE_MESSAGE = "Sorry, you have lost the game."
     INVALID_MOVE = "Invalid Move. Please select another area."
-    END_GAME =  "Sorry, a player has left the game."
+    END_GAME =  "Sorry, the game has ended without a winner."
     MOVE_MESSAGE = "It is your turn. Please make a move."
     SUGGESTION = "A suggestion was made:"
     DISPROVE = "Your suggestion was disproved:"
@@ -325,6 +325,10 @@ class Message:
     MUSTDISPROVE = "It is your turn to disprove the suggestion."
     NEW_ACCUSATION = "Would you like to make a suggestion?"
     INCOMPLETE_ACCUSATION = "Please select 3 cards to make a suggestion."
+    NOT_DISPROVED = "Your suggestion could not be disproved."
+    MISMATCHED = "Your selection does not disprove the suggestion."
+    FINALACCUSATION = "Would you like to make your final accusation?"
+    
     CUSTOM = "Hello, how are you doing?"
     
     MESSAGE_STRINGS = {
@@ -340,11 +344,14 @@ class Message:
                       "Incomplete":INCOMPLETE,
                       "Custom":CUSTOM,
                       "New Suggestion":NEW_ACCUSATION,
-                      "IncompleteAccusation": INCOMPLETE_ACCUSATION
+                      "IncompleteAccusation": INCOMPLETE_ACCUSATION,
+                      "Not Disproved":NOT_DISPROVED,
+                      "Mismatched":MISMATCHED,
+                      "Final Accusation":FINALACCUSATION
                       }
     MESSAGE_LOCATION = {
                         "Invalid Move":(70,50),
-                      "End Game": (120,50),
+                      "End Game": (70,50),
                       "Start Game": (120,50),
                       "Player Win": (80,50),
                       "Player Lose":(140,50),
@@ -355,7 +362,10 @@ class Message:
                       "Incomplete":(30,50),
                       "Custom":(140,50),
                       "New Suggestion":(70,50),
-                      "IncompleteAccusation": (50,50)
+                      "IncompleteAccusation": (50,50),
+                      "Not Disproved":(70,50),
+                      "Mismatched":(25,50),
+                      "Final Accusation":(40,50)
                         }
     
     SUGGESTION_TYPE_LOCATION = {"character":(230,55),"weapon":(230,85),"room":(230,115)}
@@ -443,14 +453,14 @@ class Message:
             pygame.display.update()
         return success, form_input
     
-    def disproveAccusation(self,message_type,accusation_lines):
+    def disproveAccusation(self,message_type,accusation_lines,card_names_to_limit=None):
         card_deck = CardDeck()
         
         accusation_form = Form(False)
         disproving = False
         if len(accusation_lines) > 0:
             disproving = True
-            accusation_form.add_object('new_title', Text('Current Accusation:', label_style=['bold','underline']))
+            accusation_form.add_object('new_title', Text('Current Suggestion:', label_style=['bold','underline']))
             for k in xrange(len(accusation_lines)):
                 accusation_message, accusation_pos,accusation_message_str = accusation_lines[k]
                 accusation_form.add_object('accusation_{0}'.format(k), Text('{0}'.format(accusation_message_str), label_style=['bold']))
@@ -458,43 +468,101 @@ class Message:
             accusation_form.add_object('disprove_title_{0}'.format(k), Text('Select card(s) to disprove:', label_style=['bold','underline']))
         else:
             
-            accusation_form.add_object('suggestion_title', Text('Select card(s) for suggestion:', label_style=['bold','underline']))
+            if message_type == "New Suggestion":
+                accusation_form.add_object('suggestion_title', Text('Select card(s) for suggestion:', label_style=['bold','underline']))
+            else:
+                accusation_form.add_object('suggestion_title', Text('Select card(s) for accusation:', label_style=['bold','underline']))
         
         screen = self.getScreen(message_type,disproving)
         
-        accusation_form.add_object('title_character', Text('Select Character:', label_style=['bold']))
         
+        
+        tracker = []
         character_menu = Select(border_width=2, top=50)
         character_list = card_deck.get_cardlist("character")
+        char_found = False
         for character_name in character_list:
-            character_menu.add_option(character_name,character_name)
-        accusation_form.add_object('character', character_menu)
+            if card_names_to_limit and len(card_names_to_limit) > 1 and character_name in card_names_to_limit:
+                character_menu.add_option(character_name,character_name)
+                tracker.append(character_name)
+                char_found = True
+            elif card_names_to_limit and len(card_names_to_limit) == 1:
+                character_menu.add_option(character_name,character_name)
+                tracker.append(character_name)
+                char_found = True
+            elif not card_names_to_limit:
+                character_menu.add_option(character_name,character_name)
+                tracker.append(character_name)
+                char_found = True
+        if char_found:
+            accusation_form.add_object('title_character', Text('Select Character:', label_style=['bold']))
+            accusation_form.add_object('character', character_menu)
+        else:
+            accusation_form.add_object('title_character', Text('Select Character:', label_style=['bold']))
+            accusation_form.add_object('title_character_1', Text('Sorry, no Character cards', label_style=['bold']))
+            accusation_form.add_object('title_character_2', Text('in your deck to select', label_style=['bold']))
         
-        accusation_form.add_object('title_weapon', Text('Select Weapon:', label_style=['bold']))
         
         #if disproving: accusation_form.add_object('weapon_title', Text('with a', label_style=['bold']))
         
         weapon_list = card_deck.get_cardlist("weapon")
         weapon_menu = Select(border_width=2, top=50)
+        weapon_found = False
         for weapon_name in weapon_list:
-            weapon_menu.add_option(weapon_name,weapon_name)
-        accusation_form.add_object('weapon', weapon_menu)
+            if card_names_to_limit and len(card_names_to_limit) > 1 and weapon_name in card_names_to_limit:
+                weapon_menu.add_option(weapon_name,weapon_name)
+                tracker.append(weapon_name)
+                weapon_found = True
+            elif card_names_to_limit and len(card_names_to_limit) == 1:
+                weapon_menu.add_option(weapon_name,weapon_name)
+                tracker.append(weapon_name)
+                weapon_found = True
+            elif not card_names_to_limit:
+                weapon_menu.add_option(weapon_name,weapon_name)
+                tracker.append(weapon_name)
+                weapon_found = True
         
-        accusation_form.add_object('title_room', Text('Select Room:', label_style=['bold']))
+        if weapon_found:
+            accusation_form.add_object('title_weapon', Text('Select Weapon:', label_style=['bold']))
+            accusation_form.add_object('weapon', weapon_menu)
+        else:
+            accusation_form.add_object('title_weapon', Text('Select Weapon:', label_style=['bold']))
+            accusation_form.add_object('title_weapon_1', Text('Sorry, no Weapon cards', label_style=['bold']))
+            accusation_form.add_object('title_weapon_2', Text('in your deck to select', label_style=['bold']))
+        
+        
         
         #if disproving: accusation_form.add_object('room_title', Text('in the', label_style=['bold']))
         
         room_list = card_deck.get_cardlist("room")
         room_menu = Select(border_width=2, top=50)
+        room_found = False
         for room_name in room_list:
-            room_menu.add_option(room_name,room_name)
-        accusation_form.add_object('room', room_menu)
+            if card_names_to_limit and room_name in card_names_to_limit:
+                room_menu.add_option(room_name,room_name)
+                tracker.append(room_name)
+                room_found = True
+            elif not card_names_to_limit:
+                room_menu.add_option(room_name,room_name)
+                tracker.append(room_name)
+                room_found = True
+        
+        if room_found:
+            accusation_form.add_object('title_room', Text('Select Room:', label_style=['bold']))
+            accusation_form.add_object('room', room_menu)
+        else:
+            accusation_form.add_object('title_room', Text('Select Room:', label_style=['bold']))
+            accusation_form.add_object('title_room_1', Text('Sorry, no Room cards', label_style=['bold']))
+            accusation_form.add_object('title_room_2', Text('in your deck to select', label_style=['bold']))
         
         if disproving:
             accusation_form.add_object('submit', Button('Disprove', accusation_form.submit, ()))
             accusation_form.add_object('skip', Button('Skip', accusation_form.skip, ()))
         else:
-            accusation_form.add_object('submit', Button('Make Suggestion', accusation_form.submit, ()))
+            if message_type == "New Suggestion":
+                accusation_form.add_object('submit', Button('Make Suggestion', accusation_form.submit, ()))
+            else:
+                accusation_form.add_object('submit', Button('Make Final Accusation', accusation_form.submit, ()))
             accusation_form.add_object('skip', Button('Skip', accusation_form.skip, ()))
         
         accusation_form.add_object('Clear', Button('Clear', accusation_form.clear, ()))
@@ -552,20 +620,23 @@ class Message:
     def get_message_position(self,message_type):
         return self.MESSAGE_LOCATION[message_type]
     
-    def showNonAccusationScreen(self,message_type,character_card=None,weapon_card=None,room_card=None,newAccusation=False):
+    def showNonAccusationScreen(self,message_type,character_card=None,weapon_card=None,room_card=None,newAccusation=False,cards_to_limit=None):
         if newAccusation:
             buttons = [MessageButton((200,110, 80, 30), "Yes"),MessageButton((300,110, 80, 30), "No")]
+            normalized_message_type = message_type if room_card else "Final Accusation"
         elif all([character_card,weapon_card,room_card]):
             buttons = [MessageButton((200,150, 80, 30), "Disprove"),MessageButton((300,150, 80, 30), "Skip")]
+            normalized_message_type = message_type
         else:
             buttons = [MessageButton((270,120, 60, 30), "OK")]
+            normalized_message_type = message_type
+            
+        message_position = self.get_message_position(normalized_message_type)
+        message_string = self.message_font.render(self.MESSAGE_STRINGS[normalized_message_type],True,BLACK)
         
-        message_position = self.get_message_position(message_type)
-        message_string = self.message_font.render(self.MESSAGE_STRINGS[message_type],True,BLACK)
-        
-        return self.showScreen(message_type,buttons,[(message_string,message_position)],character_card,weapon_card,room_card)
+        return self.showScreen(normalized_message_type,buttons,[(message_string,message_position)],character_card,weapon_card,room_card,cards_to_limit)
     
-    def showScreen(self,message_type,buttons,messages,character_card=None,weapon_card=None,room_card=None):
+    def showScreen(self,message_type,buttons,messages,character_card=None,weapon_card=None,room_card=None,cards_to_limit=None):
         """ This function shows the message screen
         
         :param message_type - type string -- message type to display. Must be a key from the MESSAGE_STRINGS
@@ -588,17 +659,21 @@ class Message:
                     button = buttons[x]
                     eventhandler = button.handleEvent(event)
                     if 'click' in eventhandler and button.get_caption_name().lower() == "yes":
-                        form_input = self.disproveAccusation(message_type,[])
+                        filter_room_entry = [room_card.get_name()] if room_card != None else None
+                        form_input = self.disproveAccusation(message_type,[],filter_room_entry)
                         while form_input == None:
                             self.showNonAccusationScreen("IncompleteAccusation")
-                            form_input = self.disproveAccusation(message_type,[])
+                            form_input = self.disproveAccusation(message_type,[],filter_room_entry)
                         running = False
                     elif 'click' in eventhandler and button.get_caption_name().lower() == "disprove":
                         accusation_message = self.get_accusationText("Suggestion",character_card,weapon_card,room_card)
-                        form_input = self.disproveAccusation(message_type,accusation_message)
-                        while form_input == None:
-                            self.showNonAccusationScreen("Incomplete")
-                            form_input = self.disproveAccusation(message_type,accusation_message)
+                        form_input = self.disproveAccusation(message_type,accusation_message,cards_to_limit)
+                        while form_input == None or (form_input != {} and len(set(form_input.values()).intersection(set([character_card.get_name(),weapon_card.get_name(),room_card.get_name()]))) == 0):
+                            if form_input == None:
+                                self.showNonAccusationScreen("Incomplete")
+                            else:
+                                self.showNonAccusationScreen("Mismatched")
+                            form_input = self.disproveAccusation(message_type,accusation_message,cards_to_limit)
                         running = False
                     elif 'click' in eventhandler and button.get_caption_name().lower() == "good":
                         running = False
@@ -649,18 +724,22 @@ class Message:
         message_type = "Player Move"
         return self.showNonAccusationScreen(message_type)
     
-    def mustDisproveTurn(self,character_card,weapon_card,room_card):
+    def mustDisproveTurn(self,character_card,weapon_card,room_card,cards_to_limit=[]):
         message_type = "Must Disprove"
         
-        return self.showNonAccusationScreen(message_type,character_card,weapon_card,room_card)
+        return self.showNonAccusationScreen(message_type,character_card,weapon_card,room_card,False,cards_to_limit)
     
     def showDisprove(self,character_card,weapon_card,room_card):
         message_type = "Disprove"
         return self.showAccusation(message_type,character_card,weapon_card,room_card)
     
-    def newSuggestion(self):
+    def newSuggestion(self,character_card,weapon_card,room_card):
         message_type = "New Suggestion"
-        return self.showNonAccusationScreen(message_type,character_card=None,weapon_card=None,room_card=None,newAccusation=True)
+        return self.showNonAccusationScreen(message_type,character_card=None,weapon_card=None,room_card=room_card,newAccusation=True)
+    
+    def notDisproved(self):
+        message_type = "Not Disproved"
+        return self.showNonAccusationScreen(message_type)
     
     def custom(self):
         message_type = "Custom"
@@ -681,7 +760,7 @@ def execute_accusation(message,options):
     
     return message.showAccusation("Suggestion",char_card,weapon_card,room_card)
 
-def execute_mustDisprove(message,options):
+def execute_new_suggestion(message,options):
     global parser
     
     if not options.cards:
@@ -690,11 +769,30 @@ def execute_mustDisprove(message,options):
     
     char_card, weapon_card, room_card = get_accusationCards(options)
     
+    if options.cards != "None" and not all([room_card]):
+        parser.error("Room card must be specified")
+        return
+    
+    return message.newSuggestion(char_card,weapon_card,room_card)
+
+def execute_mustDisprove(message,options):
+    global parser
+    
+    if not options.cards:
+        parser.error("Must specify cards for accusation")
+        return
+    
+    if not options.limitCards:
+        parser.error("Must specify cards to limit for disproval")
+        return
+    
+    char_card, weapon_card, room_card = get_accusationCards(options)
+    
     if not all([char_card,weapon_card,room_card]):
         parser.error("Character card, weapon card, and/or room card must be specified")
         return
     
-    return message.mustDisproveTurn(char_card,weapon_card,room_card)
+    return message.mustDisproveTurn(char_card,weapon_card,room_card,options.limitCards.split(","))
 
 
 def get_accusationCards(options):
@@ -705,6 +803,8 @@ def get_accusationCards(options):
     room_card = None
     card_names = options.cards.split(",")
     for card_name in card_names:
+        if card_name == "None": continue
+        
         requested_card = card_deck.get_card(card_name)
         cardtype = requested_card.get_cardtype()
         if cardtype == "character":
@@ -764,9 +864,11 @@ def execute(options):
     elif options.invalid_move:
         print message.showInvalidMove()
     elif options.newSuggestion:
-        print message.newSuggestion()
+        print execute_new_suggestion(message,options)
     elif options.accuse:
         print execute_accusation(message,options)
+    elif options.notDisproved:
+        print message.notDisproved()
     elif options.mustDisprove:
         print execute_mustDisprove(message,options)
     elif options.disprove:
@@ -785,13 +887,15 @@ def execute(options):
         parser.error("No options specified")
 
 
-def create_message(message_type,cards=None):
+def create_message(message_type,cards=None,cards_to_limit=[]):
     """ This function creates a separate process to show the message
     
     :param message_type - type str -- message type
     :param cards - type str -- comma-separated name of cards
      """
     commands = ["python",os.path.abspath(__file__)]
+    
+    print "CREATING NEW MESSAGE OF TYPE: ", message_type
     
     if message_type == "start":
         commands.append("--start")
@@ -802,9 +906,11 @@ def create_message(message_type,cards=None):
     elif message_type == "accuse":
         commands.extend(["--accuse","--cards","'{0}'".format(cards)])
     elif message_type == "newSuggestion":
-        commands.append("--newSuggestion")
+        commands.extend(["--newSuggestion","--cards","'{0}'".format(cards)])
+    elif message_type == "notdisproved":
+        commands.append("--notDisproved")
     elif message_type =="mustDisprove":
-        commands.extend(["--mustDisprove","--cards","'{0}'".format(cards)])
+        commands.extend(["--mustDisprove","--cards","'{0}'".format(cards), "--limitCards","'{0}'".format(",".join(cards_to_limit))])
     elif message_type == "disprove":
         commands.extend(["--disprove","--cards","'{0}'".format(cards)])
     elif message_type == "win":
@@ -818,6 +924,7 @@ def create_message(message_type,cards=None):
     else:
         print >> sys.stderr, "ERROR: UNKNOWN MESSAGE TYPE: ", message_type
     
+    print "COMMANDS: ", commands
     commands.extend(['2>','/dev/null'])
     execute = os.popen(" ".join(commands),'r')
     result = execute.read().strip()
@@ -852,6 +959,11 @@ if __name__ == "__main__":
                       action="store_true", dest="accuse", default=False,
                       help="Show accuse message")
     
+    
+    parser.add_option("--notDisproved",
+                      action="store_true", dest="notDisproved", default=False,
+                      help="Not Disproved message")
+    
     parser.add_option("--mustDisprove",
                       action="store_true", dest="mustDisprove", default=False,
                       help="Show Must Disprove message")
@@ -874,6 +986,10 @@ if __name__ == "__main__":
     
     parser.add_option("--cards", dest="cards", default=False,
                       help="List of cards (comma separated)")
+    
+    parser.add_option("--limitCards", dest="limitCards", default=False,
+                      help="List of cards (comma separated)")
+    
     
     parser.add_option("--test",
                       action="store_true", dest="test", default=False,

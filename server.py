@@ -3,7 +3,7 @@ import PodSixNet.Server
 import Message, random
 from CardDeck import CardDeck
 import jsonpickle, sys
-import random
+import random, time
 
 from time import sleep
 
@@ -50,8 +50,15 @@ class ClientChannel(PodSixNet.Channel.Channel):
         playerId = data['playerId']
         self._server.update_playerMove(spotArrayIndex,playerId)
     
+    def Network_finalAccusation(self,data):
+        self._server.make_final_accusation(data)
+    
     def Network_newSuggestion(self,data):
         self._server.make_suggestion(data)
+    
+    def Network_disproved(self,data):
+        print "RECEIVED DISPROVED RESPONSE!"
+        self._server.disproved(data)
     
     def Close(self):
         self._server.close(self.gameid)
@@ -86,20 +93,91 @@ class ClueLessServer(PodSixNet.Server.Server,ClueLessGame):
         self.active_turn = 0
         self.disprove_turn = 0
         self.playerChannels = []
+        self.disproved_response = []
         
         self.select_confidential_cards()
     
+    def check_confidential_file(self,card_list):
+        print "self.confidential_file: ", self.confidential_file
+        print "final accusation: ", card_list
+        if len(set(self.confidential_file).difference(set(card_list))) == 0:
+            return True
+        print "difference: ", set(self.confidential_file).difference(set(card_list))
+        return False
+    
+    def make_final_accusation(self,data):
+        cards = data['cards']
+        playerId = data['playerId']
+        player = self.playerChannels[playerId]
+        isWinner = self.check_confidential_file(cards.values())
+        if isWinner:
+            player.Send({"action":"winner"})
+            for x in xrange(len(self.playerChannels)):
+                if x == playerId: continue
+                player = self.playerChannels[x]
+                player.Send({"action":"loser"})
+        else:
+            player.Send({"action":"loser"})
+            for x in xrange(len(self.playerChannels)):
+                if x == playerId: continue
+                player = self.playerChannels[x]
+                player.Send({"action":"endgame"})
+        
     def make_suggestion(self,data):
         """ Notify all users of all the suggestion """
         cards = data['cards']
         playerId = data['playerId']
         
         self.broadcast_suggestion(cards,playerId)
+        self.force_disproval(cards,playerId)
+    
+    def disproved(self,data):
+        cards = data['cards']
+        print "CARDS: ", cards
+        if cards == False:
+            self.disproved_response.append(False)
+        else:
+            card_names = cards.values()
+            self.disproved_response.extend(card_names)
+        print "NEW DISPROVED_RESPONSE: ", self.disproved_response
+    
+    def force_disproval(self,cards,playerId):
+        
+        disprovedCards = False
+        tracker = [playerId]
+        nextPlayerId = playerId+1 if playerId < len(self.playerChannels)-1 else 0
+        print "PlayerId who just made suggestion: ", playerId
+        while len(tracker) < len(self.playerChannels):
+            print "nextPlayerId: ", nextPlayerId
+            player = self.playerChannels[nextPlayerId]
+            player.Send({"action":"forceDisproval","cards":cards})
+            disprovedCards = self.get_disproval_response()
+            if disprovedCards: break
+            tracker.append(nextPlayerId)
+            nextPlayerId = nextPlayerId+1 if nextPlayerId < len(self.playerChannels)-1 else 0
+        
+        player = self.playerChannels[playerId]
+        if disprovedCards:
+            player.Send({"action":"isDisproved","cards":disprovedCards})
+        else:
+            player.Send({"action":"notDisproved"})
+    
+    def get_disproval_response(self):
+        
+        self.disproved_response = []
+        while len(self.disproved_response) == 0:
+            self.tick()
+            time.sleep(0.01)
+        
+        if False in self.disproved_response:
+            return False
+        else:
+            return self.disproved_response
     
     def broadcast_suggestion(self,cards,playerId):
         for x in xrange(len(self.playerChannels)):
             if x == playerId: continue
-            
+            print "Broadcasting suggestion for Player: ", x
             player = self.playerChannels[x]
             player.Send({"action":"newSuggestion","cards":cards})
     
@@ -125,8 +203,9 @@ class ClueLessServer(PodSixNet.Server.Server,ClueLessGame):
     def select_confidential_cards(self):
         """ This function selects cards from the confidential file"""
         for cardtype in self.confidential_card_types:
-            self.confidential_file.append(self.card_deck.get_random_card(cardtype))
-    
+            self.confidential_file.append(self.card_deck.get_random_card(cardtype).get_name())
+        print "FINAL CONFIDENTIAL FILE CARDS: ", self.confidential_file
+        
     def add_player(self,playerChannel):
         """ This function adds another player to the game"""
         self.playerChannels.append(playerChannel)
@@ -146,7 +225,7 @@ class ClueLessServer(PodSixNet.Server.Server,ClueLessGame):
     
     def distribute_cards(self):
         """ This function iterates through the card deck, randomly assigns players a character, and the rest of cards in the deck """
-        card_tracker = self.confidential_file
+        card_tracker = [] + self.confidential_file
         assigned_chars = []     # Assigned character for each player
         assigned_cards = [[] for x in xrange(len(self.playerChannels))]    # Assigned cards for each player
         for x in xrange(len(self.playerChannels)):
@@ -187,7 +266,7 @@ class ClueLessServer(PodSixNet.Server.Server,ClueLessGame):
     def update_playerMove(self,spotArrayIndex,playerId):
         
         for x in xrange(len(self.playerChannels)):
-            if x == playerId: continue  # skip the previous active players update
+            #if x == playerId: continue  # skip the previous active players update
             
             player = self.playerChannels[x]
             player.Send({"action":"movePlayer","spotArrayIndex":spotArrayIndex})
