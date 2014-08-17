@@ -244,7 +244,7 @@ def isValidSecretPassage(areaToGo, characterArea):
 class CluelessGamePlayer(ConnectionListener):
     """ This class begins the gameplay by drawing the board """
     
-    def __init__(self,host="localhost",port=8080):
+    def __init__(self,host="198.61.134.123",port=8080):
         
         self.display = None
         self.roomFont = None
