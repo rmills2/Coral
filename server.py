@@ -2,7 +2,7 @@ import PodSixNet.Channel
 import PodSixNet.Server
 import Message, random
 from CardDeck import CardDeck
-import jsonpickle, sys
+import sys
 import random, time
 
 from time import sleep
@@ -294,7 +294,7 @@ if __name__ == "__main__":
     
     clueless_server = ClueLessServer(localaddr=(options.host, int(options.port)))
     """
-    clueless_server = ClueLessServer(localaddr=("localhost", 8080))
+    clueless_server = ClueLessServer(localaddr=("0.0.0.0", 8080))
     
     while True:
         clueless_server.tick()
